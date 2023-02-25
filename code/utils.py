@@ -2,6 +2,7 @@ import numpy as np
 import torch.utils.data
 import torch.nn.functional
 import torchvision.transforms
+from itertools import permutations
 
 
 TRANSFORM = torchvision.transforms.Compose(
@@ -51,3 +52,13 @@ def store_ans(answers, file_name="answer.txt"):
         for answer in answers:
             # Ensure that 6 decimals are used
             f.write("{:.6f}\n".format(answer))
+
+def construct_permutation_mappings(grid_length):
+    """
+    Returns a mapping from grid_length**2 permutations in tuple form to the integers in [0,grid_length^2), as well
+    as its inverse.
+    :param grid_length: The length of one side of the square grid
+    :return: The permutations to integers mapping and its inverse.
+    """
+    return {k:v for v,k in enumerate(list(permutations(range(grid_length ** 2))))}, \
+            {k:v for k,v in enumerate(list(permutations(range(grid_length ** 2))))}
