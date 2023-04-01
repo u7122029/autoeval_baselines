@@ -114,6 +114,7 @@ if __name__ == "__main__":
         raise ValueError("Unexpected model_name")
     # load the rotation FC layer weights
     for key, value in fc_rot_weights.items():
+        print(key, value)
         model_state[key] = value
     model.load_state_dict(model_state)
     model.to(device)
