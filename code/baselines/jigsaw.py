@@ -75,6 +75,12 @@ parser.add_argument(
     type=int,
     help='Learning Rate'
 )
+parser.add_argument(
+    '--show-graphs',
+    default=False,
+    type=bool,
+    help='True if the graphs of classification accuracy vs jigsaw accuracy should be shown before RMSE calculation'
+)
 
 
 # Assumes (n_channels, rows, cols)
@@ -306,11 +312,7 @@ def train_jigsaw_FC(model, device, train_loader, test_loader, num_permutations, 
     for param in model.parameters():
         param.requires_grad = False
     model.fc_jigsaw.weight.requires_grad = True
-    model.fc_jigsaw1.weight.requires_grad = True
-    model.fc_jigsaw2.weight.requires_grad = True
     model.fc_jigsaw.bias.requires_grad = True
-    model.fc_jigsaw1.bias.requires_grad = True
-    model.fc_jigsaw2.bias.requires_grad = True
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(),
@@ -359,14 +361,15 @@ def get_model(name, num_permutations, device):
         model = ResNetJigsaw(num_permutations)
         model_state = model.state_dict()
         if not args.train_jigsaw_fc:
-            fc_jig_weights = torch.load("../model_weights/resnet-jig-fc.pt", map_location=torch.device("cpu"))
+            fc_jig_weights = torch.load("../model_weights/resnet-jigsaw-fc.pt", map_location=torch.device("cpu"))
     else:
         raise NameError(f"Model name {name} does not exist.") # TODO: get list of model names automatically.
 
     if fc_jig_weights and not args.train_jigsaw_fc:
         # load the rotation FC layer weights
         for key, value in fc_jig_weights.items():
-            model_state[key] = value
+            if "fc_jigsaw" in key:
+                model_state[key] = value
         model.load_state_dict(model_state)
         model.eval()
 
@@ -471,6 +474,15 @@ if __name__ == "__main__":
     val_x = np.load(f"{temp_file_path}val_sets.npy") * 100
     val_y = np.load(f"../temp/{model_name}/acc/val_sets.npy") * 100
 
+    plt.figure()
+    plt.title("train set")
+    plt.scatter(train_x.reshape(-1, 1), train_y)
+
+    plt.figure()
+    plt.title("validation set")
+    plt.scatter(train_x.reshape(-1, 1), train_y)
+
+    plt.show()
     lr = LinearRegression()
     lr.fit(train_x.reshape(-1, 1), train_y)
     # predictions will have 6 decimals

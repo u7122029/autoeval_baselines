@@ -23,13 +23,10 @@ class ResNetJigsaw(nn.Module):
 
         # jigsaw prediction FC layer
         # The grid has grid_length ** 2 pieces, so there are (grid_length ** 2)! permutations.
-        #self.fc_jigsaw = nn.Linear(64, self.num_permutations)
-        self.fc_jigsaw = nn.Linear(64, 4096)
-        self.fc_jigsaw1 = nn.Linear(4096, 4096)
-        self.fc_jigsaw2 = nn.Linear(4096, self.num_permutations)
+        self.fc_jigsaw = nn.Linear(64, self.num_permutations)
 
     def forward(self, x):
         x = self.feat(x)
         # flatten the feature representation
         x = x.view(x.size(0), -1)
-        return self.fc(x), self.fc_jigsaw2(F.relu(self.fc_jigsaw1(F.relu(self.fc_jigsaw(x))))) #self.fc_jigsaw(x)
+        return self.fc(x), self.fc_jigsaw(x)

@@ -102,7 +102,7 @@ def save_checkpoint(state, is_best, model_name, task):
     filename = f"{directory}/checkpoint.pt"
     torch.save(state, filename)
     if is_best:
-        shutil.copyfile(filename, f'../model_weights/{model_name}/{task}/model_best.pt')
+        shutil.copyfile(filename, f'../model_weights/{model_name}-{task}-fc.pt')
 
 
 def adjust_learning_rate(optimizer, epoch, args):
