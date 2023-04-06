@@ -394,14 +394,13 @@ if __name__ == "__main__":
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    train_loader, test_loader = load_dataset(args, device)
-
     # Get the model given the input parameters.
     model = get_model(model_name, num_permutations, device)
 
     # Train the model if required
     if args.train_jigsaw_fc:
-        train_jigsaw_FC(model, device, train_loader,test_loader,num_permutations,int_to_perm)
+        train_loader, test_loader = load_dataset(args, device)
+        train_jigsaw_FC(model, device, train_loader, test_loader,num_permutations,int_to_perm)
 
     # All the below should be after training.
     # The CIFAR-10 datasets used below are non-standard and have been manipulated in various ways.
@@ -474,21 +473,24 @@ if __name__ == "__main__":
     val_x = np.load(f"{temp_file_path}val_sets.npy") * 100
     val_y = np.load(f"../temp/{model_name}/acc/val_sets.npy") * 100
 
-    plt.figure()
-    plt.title("train set")
-    plt.scatter(train_x.reshape(-1, 1), train_y)
 
-    plt.figure()
-    plt.title("validation set")
-    plt.scatter(train_x.reshape(-1, 1), train_y)
-
-    plt.show()
     lr = LinearRegression()
     lr.fit(train_x.reshape(-1, 1), train_y)
     # predictions will have 6 decimals
-    val_y_hat = np.round(lr.predict(val_x.reshape(-1, 1)), decimals=6)
+    val_y_hat = np.round(lr.predict(val_x.reshape(-1, 1)))#, decimals=6)
     rmse_loss = mean_squared_error(y_true=val_y, y_pred=val_y_hat, squared=False)
     print(f"The RMSE on validation set is: {rmse_loss}")
+
+    if args.show_graphs:
+        plt.figure()
+        plt.title("train set")
+        plt.scatter(train_x.reshape(-1, 1), train_y)
+
+        plt.figure()
+        plt.title("validation set")
+        plt.scatter(train_x.reshape(-1, 1), train_y)
+
+        plt.show()
 
 
 
