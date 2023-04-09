@@ -1,11 +1,15 @@
-import numpy as np
-import torch.utils.data
 import os
 import shutil
-import torch.nn.functional
-import torchvision.transforms
 from itertools import permutations
 
+import matplotlib.pyplot as plt
+import numpy as np
+import torch.nn.functional
+import torch.utils.data
+import torchvision.transforms
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+from tabulate import tabulate
 
 TRANSFORM = torchvision.transforms.Compose(
     [
@@ -15,6 +19,7 @@ TRANSFORM = torchvision.transforms.Compose(
         ),
     ]
 )
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -37,6 +42,7 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
 
 class CIFAR10NP(torch.utils.data.Dataset):
     # Dataset class for CIFAR10 dataset stored as numpy arrays
@@ -91,7 +97,7 @@ def construct_permutation_mappings(grid_length):
     """
     perms = torch.tensor(list(permutations(range(grid_length ** 2))))
 
-    return {k:{"perm": v, "inverse": inverse_permutation(v)} for k,v in enumerate(perms)}
+    return {k: {"perm": v, "inverse": inverse_permutation(v)} for k, v in enumerate(perms)}
 
 
 def save_checkpoint(state, is_best, model_name, task):
@@ -105,9 +111,9 @@ def save_checkpoint(state, is_best, model_name, task):
         shutil.copyfile(filename, f'../model_weights/{model_name}-{task}-fc.pt')
 
 
-def adjust_learning_rate(optimizer, epoch, args):
+def adjust_learning_rate(optimizer, epoch, lr):
     """Sets the learning rate to the initial LR decayed by 10 after 8 and 14 epochs"""
-    lr = args.lr * (0.1 ** (epoch // 8)) * (0.1 ** (epoch // 14))
+    lr = lr * (0.1 ** (epoch // 8)) * (0.1 ** (epoch // 14))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
@@ -126,3 +132,41 @@ def accuracy(output, target, topk=(1,)):
         correct_k = correct[:k].view(-1).float().sum(0)
         res.append(correct_k.mul_(100.0 / batch_size))
     return res
+
+
+def fit_lr(train_x, train_y, val_x, val_y, show_graphs, task_name, model_name):
+    lr = LinearRegression()
+    lr.fit(train_x.reshape(-1, 1), train_y)
+
+    train_y_hat = lr.predict(train_x.reshape(-1, 1))
+    val_y_hat = lr.predict(val_x.reshape(-1, 1))
+
+    rmse_loss_train = mean_squared_error(y_true=train_y, y_pred=train_y_hat, squared=False)
+    rmse_loss_val = mean_squared_error(y_true=val_y, y_pred=val_y_hat, squared=False)
+
+    r2_train = r2_score(train_y, train_y_hat)
+    r2_val = r2_score(val_y, val_y_hat)
+
+    print("Displaying Metrics")
+
+    grid = [["Metric", "Training Set", "Validation Set"],
+            ["RSME", f"{rmse_loss_train:.4f}", f"{rmse_loss_val:.4f}"],
+            ["R^2", f"{r2_train:.4f}", f"{r2_val:.4f}"]]
+    print(tabulate(grid, headers="firstrow", tablefmt="psql"))
+
+    if show_graphs:
+        plt.figure()
+        plt.title(f"Classification Accuracy vs {task_name} Accuracy ({model_name}) - Training Dataset")
+        plt.xlabel(f"{task_name} Accuracy")
+        plt.ylabel("Classification Accuracy")
+        plt.scatter(train_x.reshape(-1, 1), train_y, marker=".")
+        plt.plot(train_x.reshape(-1, 1), train_y_hat, "r")
+
+        plt.figure()
+        plt.title(f"Classification Accuracy vs {task_name} Accuracy ({model_name}) - Validation Dataset")
+        plt.xlabel(f"{task_name} Accuracy")
+        plt.ylabel("Classification Accuracy")
+        plt.scatter(val_x.reshape(-1, 1), val_y, marker=".")
+        plt.plot(val_x.reshape(-1, 1), val_y_hat, "r")
+
+        plt.show()

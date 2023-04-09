@@ -6,13 +6,14 @@ sys.path.append(".")
 
 import numpy as np
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 import torch
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
-from models.resnet_rotation import ResNetRotation
-from models.repvgg_rotation import RepVGGRotation
-from utils import CIFAR10NP, TRANSFORM
+from models.resnet import ResNet_SS
+from models.repvgg import RepVGG_SS
+from utils import CIFAR10NP, TRANSFORM, fit_lr
 
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Rotation Prediction")
@@ -21,11 +22,17 @@ parser.add_argument(
 )
 parser.add_argument(
     "--dataset_path",
-    required=True,
+    required=False,
+    default="data",
     type=str,
     help="path containing all datasets (training and validation)",
 )
-
+parser.add_argument(
+    '--show-graphs',
+    default=True,
+    type=bool,
+    help='True if the graphs of classification accuracy vs jigsaw accuracy should be shown before RMSE calculation'
+)
 
 # Assumes that tensor is (nchannels, height, width)
 def tensor_rot_90(x):
@@ -99,23 +106,29 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     # load the model
     if model_name == "resnet":
-        model = ResNetRotation()
+        model = ResNet_SS(4)
         model_state = model.state_dict()
         fc_rot_weights = torch.load(
             "../model_weights/resnet-rotation-fc.pt", map_location=torch.device("cpu")
         )
     elif model_name == "repvgg":
-        model = RepVGGRotation()
+        model = RepVGG_SS(4)
         model_state = model.state_dict()
         fc_rot_weights = torch.load(
             "../model_weights/repvgg-rotation-fc.pt", map_location=torch.device("cpu")
         )
     else:
         raise ValueError("Unexpected model_name")
+
     # load the rotation FC layer weights
     for key, value in fc_rot_weights.items():
-        print(key, value)
-        model_state[key] = value
+        if key == "fc_rotation.weight":
+            model_state["fc_ss.weight"] = value
+        elif key == "fc_rotation.bias":
+            model_state["fc_ss.bias"] = value
+        else:
+            model_state[key] = value
+
     model.load_state_dict(model_state)
     model.to(device)
     model.eval()
@@ -128,7 +141,7 @@ if __name__ == "__main__":
             os.makedirs(temp_file_path)
 
         # training set calculation
-        train_path = f"{dataset_path}{train_set}"
+        train_path = f"{dataset_path}/{train_set}"
         train_candidates = []
         for file in sorted(os.listdir(train_path)):
             if file.endswith(".npy") and file.startswith("new_data"):
@@ -192,9 +205,10 @@ if __name__ == "__main__":
     val_x = np.load(f"{temp_file_path}val_sets.npy") * 100
     val_y = np.load(f"../temp/{model_name}/acc/val_sets.npy") * 100
 
-    lr = LinearRegression()
-    lr.fit(train_x.reshape(-1, 1), train_y)
-    # predictions will have 6 decimals
-    val_y_hat = np.round(lr.predict(val_x.reshape(-1, 1)), decimals=6)
-    rmse_loss = mean_squared_error(y_true=val_y, y_pred=val_y_hat, squared=False)
-    print(f"The RMSE on validation set is: {rmse_loss}")
+    fit_lr(train_x,
+           train_y,
+           val_x,
+           val_y,
+           args.show_graphs,
+           "Rotation",
+           args.model)
