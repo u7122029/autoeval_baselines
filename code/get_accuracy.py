@@ -17,7 +17,8 @@ parser.add_argument(
 )
 parser.add_argument(
     "--dataset_path",
-    required=True,
+    required=False,
+    default="data",
     type=str,
     help="path containing all datasets (training and validation)",
 )
@@ -56,6 +57,10 @@ if __name__ == "__main__":
     elif model_name == "repvgg":
         model = torch.hub.load(
             "chenyaofo/pytorch-cifar-models", "cifar10_repvgg_a0", pretrained=True
+        )
+    elif model_name == "mobilenetv2":
+        model = torch.hub.load(
+            "chenyaofo/pytorch-cifar-models", f"cifar10_mobilenetv2_x1_4", pretrained=True
         )
     else:
         raise ValueError("Unexpected model_name")

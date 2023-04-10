@@ -14,11 +14,26 @@ import matplotlib.pyplot as plt
 from models.resnet import ResNet_SS
 from models.repvgg import RepVGG_SS
 from utils import CIFAR10NP, TRANSFORM, fit_lr
+from training_utils import (
+    load_original_cifar_dataset,
+    get_model,
+    train_ss_fc
+)
 
+from eval_utils import (
+    eval_train,
+    eval_validation
+)
+
+valid_models = ["mobilenetv2"] # Temporarily exclude resnet and repvgg to preserve the rotation FC .pt files.
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Rotation Prediction")
 parser.add_argument(
-    "--model", required=True, type=str, help="the model used to run this script"
+    "--model",
+    required=True,
+    type=str,
+    help="the model used to run this script",
+    choices=valid_models
 )
 parser.add_argument(
     "--dataset_path",
@@ -26,6 +41,45 @@ parser.add_argument(
     default="data",
     type=str,
     help="path containing all datasets (training and validation)",
+)
+parser.add_argument(
+    "--grid_length",
+    required=False,
+    type=int,
+    default=2,
+    help="The length of one side of a (square) jigsaw image."
+)
+parser.add_argument(
+    "--batch_size",
+    required=False,
+    type=int,
+    default=64,
+    help="Number of training samples in one batch."
+)
+parser.add_argument(
+    "--train-ss-layer",
+    required=False,
+    type=bool,
+    default=False,
+    help="True if the model's Fully Connected (FC) layer for jigsaw prediction should be trained, and False otherwise."
+)
+parser.add_argument(
+    '--print-freq',
+    default=100,
+    type=int,
+    help='Size of intervals between running average loss prints.'
+)
+parser.add_argument(
+    '--lr',
+    default=1e-2,
+    type=float,
+    help='Learning Rate'
+)
+parser.add_argument(
+    '--epochs',
+    default=50,
+    type=float,
+    help='Number of epochs for training.'
 )
 parser.add_argument(
     '--show-graphs',
@@ -94,106 +148,66 @@ def rotation_pred(dataloader, model, device):
 
 
 if __name__ == "__main__":
-    # paths
+    plt.ion()
     args = parser.parse_args()
+
+    # paths
     dataset_path = args.dataset_path
     model_name = args.model
+    grid_length = args.grid_length
+
+    task_name = "rotation"
     train_set = "train_data"
     val_sets = sorted(["cifar10-f-32", "cifar-10.1-c", "cifar-10.1"])
-    temp_file_path = f"../temp/{model_name}/rotation/"
+    temp_file_path = f"../temp/{model_name}/{task_name}/"
 
-    batch_size = 500
+    # This function must only be run ONCE!!! Computing permutations is O(n!)
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    # load the model
-    if model_name == "resnet":
-        model = ResNet_SS(4)
-        model_state = model.state_dict()
-        fc_rot_weights = torch.load(
-            "../model_weights/resnet-rotation-fc.pt", map_location=torch.device("cpu")
+
+    # Get the model given the input parameters.
+    model = get_model(model_name, task_name, 4, device, args.train_ss_layer)
+
+    ss_batch_func = lambda inp_batch: rotate_batch(inp_batch, "rand")
+    # Train the model if required
+    if args.train_ss_layer:
+        train_loader, test_loader = load_original_cifar_dataset(
+            device,
+            args.batch_size,
+            args.dataset_path
         )
-    elif model_name == "repvgg":
-        model = RepVGG_SS(4)
-        model_state = model.state_dict()
-        fc_rot_weights = torch.load(
-            "../model_weights/repvgg-rotation-fc.pt", map_location=torch.device("cpu")
+
+        train_ss_fc(
+            model,
+            device,
+            train_loader,
+            test_loader,
+            ss_batch_func,
+            task_name,
+            args.epochs,
+            args.lr,
+            print_freq=args.print_freq
         )
-    else:
-        raise ValueError("Unexpected model_name")
 
-    # load the rotation FC layer weights
-    for key, value in fc_rot_weights.items():
-        if key == "fc_rotation.weight":
-            model_state["fc_ss.weight"] = value
-        elif key == "fc_rotation.bias":
-            model_state["fc_ss.bias"] = value
-        else:
-            model_state[key] = value
-
-    model.load_state_dict(model_state)
-    model.to(device)
-    model.eval()
-
+    # All the below should be after training.
+    # The CIFAR-10 datasets used below are non-standard and have been manipulated in various ways.
     # need to do rotation accuracy calculation
-    if not os.path.exists(temp_file_path) or not os.path.exists(
-        f"{temp_file_path}{train_set}.npy"
-    ):
-        if not os.path.exists(temp_file_path):
-            os.makedirs(temp_file_path)
+    if not os.path.exists(temp_file_path):
+        os.makedirs(temp_file_path)
 
-        # training set calculation
-        train_path = f"{dataset_path}/{train_set}"
-        train_candidates = []
-        for file in sorted(os.listdir(train_path)):
-            if file.endswith(".npy") and file.startswith("new_data"):
-                train_candidates.append(file)
+    ss_predictor_func = lambda dataloader: rotation_pred(dataloader, model, device)
+    if args.train_ss_layer or not os.path.exists(f"{temp_file_path}{train_set}.npy"):
+        eval_train(dataset_path, temp_file_path, train_set, TRANSFORM, args.batch_size, ss_predictor_func)
 
-        rotation_acc = np.zeros(len(train_candidates))
-        print(f"===> Calculating rotation accuracy for {train_set}")
-
-        for i, candidate in enumerate(tqdm(train_candidates)):
-            data_path = f"{train_path}/{candidate}"
-            label_path = f"{train_path}/labels.npy"
-
-            dataloader = torch.utils.data.DataLoader(
-                dataset=CIFAR10NP(
-                    data_path=data_path,
-                    label_path=label_path,
-                    transform=TRANSFORM,
-                ),
-                batch_size=batch_size,
-                shuffle=False,
-            )
-            rotation_acc[i] = rotation_pred(dataloader, model, device)
-
-        np.save(f"{temp_file_path}{train_set}.npy", rotation_acc)
-
-    if not os.path.exists(f"{temp_file_path}val_sets.npy"):
-        # validation set calculation
-        val_candidates = []
-        val_paths = [f"{dataset_path}{set_name}" for set_name in val_sets]
-        for val_path in val_paths:
-            for file in sorted(os.listdir(val_path)):
-                val_candidates.append(f"{val_path}/{file}")
-
-        rotation_acc = np.zeros(len(val_candidates))
-        print(f"===> Calculating rotation accuracy for validation sets")
-
-        for i, candidate in enumerate(tqdm(val_candidates)):
-            data_path = f"{candidate}/data.npy"
-            label_path = f"{candidate}/labels.npy"
-
-            dataloader = torch.utils.data.DataLoader(
-                dataset=CIFAR10NP(
-                    data_path=data_path,
-                    label_path=label_path,
-                    transform=TRANSFORM,
-                ),
-                batch_size=batch_size,
-                shuffle=False,
-            )
-            rotation_acc[i] = rotation_pred(dataloader, model, device)
-
-        np.save(f"{temp_file_path}val_sets.npy", rotation_acc)
+    if args.train_ss_layer or not os.path.exists(f"{temp_file_path}val_sets.npy"):
+        eval_validation(
+            dataset_path,
+            temp_file_path,
+            val_sets,
+            TRANSFORM,
+            args.batch_size,
+            ss_predictor_func
+        )
 
     # if the calculation of rotation accuracy is finished
     # calculate the linear regression model (accuracy in %)
@@ -204,11 +218,12 @@ if __name__ == "__main__":
     train_y = np.load(f"../temp/{model_name}/acc/{train_set}.npy") * 100
     val_x = np.load(f"{temp_file_path}val_sets.npy") * 100
     val_y = np.load(f"../temp/{model_name}/acc/val_sets.npy") * 100
-
+    plt.ioff()
+    plt.show()
     fit_lr(train_x,
            train_y,
            val_x,
            val_y,
            args.show_graphs,
-           "Rotation",
+           task_name.capitalize(),
            args.model)
