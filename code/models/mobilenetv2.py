@@ -2,20 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from models.model import Model
 
-class MobileNet_SS(nn.Module):
+class MobileNet_SS(Model, nn.Module):
     def __init__(self, num_ss_classes=4):
-        # Use num_permutations to avoid computing the factorial.
-        super(MobileNet_SS, self).__init__()
-        self.num_ss_classes = num_ss_classes
-        self.model_name = "mobilenetv2"
-
-        # load the pretrained model weight
-        # these feature extraction backbone parameters are freezed
-        # shouldn't be changed during rotation prediction training
-        self.model = torch.hub.load(
-            "chenyaofo/pytorch-cifar-models", f"cifar10_mobilenetv2_x1_4", pretrained=True
-        )
+        nn.Module.__init__(self)
+        Model.__init__(self, num_ss_classes, "resnet", "chenyaofo/pytorch-cifar-models", "cifar10_mobilenetv2_x1_4")
 
         # feature extraction backbone
         self.feat = self.model.features
@@ -28,6 +20,7 @@ class MobileNet_SS(nn.Module):
             nn.Dropout(p=0.2, inplace=False),
             nn.Linear(1792, self.num_ss_classes)
         )
+
     def forward(self, x):
         x = self.feat(x)
         # flatten the feature representation

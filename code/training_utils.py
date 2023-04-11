@@ -84,31 +84,15 @@ def get_model(name, task, num_ss_classes, device, train_ss_fc):
         fc_ss_weights = torch.load(f"../model_weights/{name}-{task}-fc.pt", map_location=torch.device("cpu"))
 
         # load the rotation FC layer weights
+        # NOTE: temporary for now. 
         for key, value in fc_ss_weights.items():
-            if key in ["fc_jigsaw.weight", "fc_rotation.weight" "fc_ss.weight"]:
+            if key in [f"fc_{task}.weight", "fc_ss.weight"]:
                 model_state["fc_ss.weight"] = value
-            elif key in ["fc_jigsaw.bias", "fc_rotation.bias", "fc_ss.bias"]:
+            elif key in [f"fc_{task}.bias", "fc_ss.bias"]:
                 model.state["fc_ss.bias"] = value
 
         model.load_state_dict(model_state)
         model.eval()
-    else:
-        # Freeze all layers
-        for param in model.parameters():
-            param.requires_grad = False
-
-        # Unfreeze self-supervision layer.
-        if model.model_name in ["resnet", "repvgg"]:
-            model.fc_ss.weight.requires_grad = True
-            model.fc_ss.bias.requires_grad = True
-        else:
-            # This is good enough for now. However, there may be models whose ss layer has nested sequential layers.
-            for param in model.fc_ss:
-                try:
-                    param.weight.requires_grad = True
-                    param.bias.requires_grad = True
-                except:
-                    pass
 
     model.to(device)
     return model
