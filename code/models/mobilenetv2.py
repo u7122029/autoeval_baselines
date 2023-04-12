@@ -4,10 +4,12 @@ import torch.nn.functional as F
 
 from models.model import Model
 
+
 class MobileNet_SS(Model, nn.Module):
     def __init__(self, num_ss_classes=4):
         nn.Module.__init__(self)
-        Model.__init__(self, num_ss_classes, "resnet", "chenyaofo/pytorch-cifar-models", "cifar10_mobilenetv2_x1_4")
+        Model.__init__(self, num_ss_classes, "mobilenetv2", "chenyaofo/pytorch-cifar-models",
+                       "cifar10_mobilenetv2_x1_4")
 
         # feature extraction backbone
         self.feat = self.model.features

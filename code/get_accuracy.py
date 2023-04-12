@@ -6,21 +6,36 @@ sys.path.append(".")
 
 import numpy as np
 import torch
-from tqdm import tqdm
 
-from utils import predict_multiple, CIFAR10NP, TRANSFORM
+from models.resnet import ResNet_SS
+from models.mobilenetv2 import MobileNet_SS
+from models.repvgg import RepVGG_SS
 
+from eval_utils import (
+    eval_train,
+    eval_validation
+)
+
+from utils import predict_multiple, TRANSFORM, valid_models
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - get_accuracy")
 parser.add_argument(
     "--model", required=True, type=str, help="the model used to run this script"
 )
 parser.add_argument(
-    "--dataset_path",
+    "--dataset-path",
     required=False,
     default="data",
     type=str,
     help="path containing all datasets (training and validation)",
+    choices=valid_models
+)
+parser.add_argument(
+    "--compute-acc",
+    required=False,
+    default=False,
+    type=bool,
+    help="True if the accuracies should be recomputed. False otherwise."
 )
 
 
@@ -51,86 +66,42 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     # load the model
     if model_name == "resnet":
-        model = torch.hub.load(
-            "chenyaofo/pytorch-cifar-models", "cifar10_resnet56", pretrained=True
-        )
+        model = ResNet_SS()
     elif model_name == "repvgg":
-        model = torch.hub.load(
-            "chenyaofo/pytorch-cifar-models", "cifar10_repvgg_a0", pretrained=True
-        )
+        model = RepVGG_SS()
     elif model_name == "mobilenetv2":
-        model = torch.hub.load(
-            "chenyaofo/pytorch-cifar-models", f"cifar10_mobilenetv2_x1_4", pretrained=True
-        )
+        model = MobileNet_SS()
     else:
+        # this should never happen.
         raise ValueError("Unexpected model_name")
+
     model.to(device)
     model.eval()
 
+    # if there is no temp file path, make it.
+    if not os.path.exists(temp_file_path):
+        os.makedirs(temp_file_path)
+
     # need to do accuracy calculation
-    if not os.path.exists(temp_file_path) or not os.path.exists(
-        f"{temp_file_path}{train_set}.npy"
-    ):
-        if not os.path.exists(temp_file_path):
-            os.makedirs(temp_file_path)
+    predictor_func = lambda dataloader: calculate_acc(dataloader, model, device)
+    if not os.path.exists(f"{temp_file_path}{train_set}.npy") or args.compute_acc:
+        eval_train(
+            dataset_path,
+            temp_file_path,
+            train_set,
+            TRANSFORM,
+            batch_size,
+            predictor_func,
+            task_name="classification"
+        )
 
-        # training set calculation
-        train_path = f"{dataset_path}{train_set}"
-        train_candidates = []
-        if not os.path.exists(train_path):
-            os.makedirs(train_path)
-        for file in sorted(os.listdir(train_path)):
-            if file.endswith(".npy") and file.startswith("new_data"):
-                train_candidates.append(file)
-
-        accuracies = np.zeros(len(train_candidates))
-        print(f"===> Calculating accuracy for {train_set}")
-
-        for i, candidate in enumerate(tqdm(train_candidates)):
-            data_path = f"{train_path}/{candidate}"
-            label_path = f"{train_path}/labels.npy"
-
-            dataloader = torch.utils.data.DataLoader(
-                dataset=CIFAR10NP(
-                    data_path=data_path,
-                    label_path=label_path,
-                    transform=TRANSFORM,
-                ),
-                batch_size=batch_size,
-                shuffle=False,
-            )
-            accuracies[i] = calculate_acc(dataloader, model, device)
-
-        accuracies = np.round(accuracies, decimals=6)
-        np.save(f"{temp_file_path}{train_set}.npy", accuracies)
-
-    if not os.path.exists(f"{temp_file_path}val_sets.npy"):
-        # validation set calculation
-        val_candidates = []
-        val_paths = [f"{dataset_path}{set_name}" for set_name in val_sets]
-        for val_path in val_paths:
-            if not os.path.exists(val_path):
-                os.makedirs(val_path)
-            for file in sorted(os.listdir(val_path)):
-                val_candidates.append(f"{val_path}/{file}")
-
-        accuracies = np.zeros(len(val_candidates))
-        print(f"===> Calculating accuracy for validation sets")
-
-        for i, candidate in enumerate(tqdm(val_candidates)):
-            data_path = f"{candidate}/data.npy"
-            label_path = f"{candidate}/labels.npy"
-
-            dataloader = torch.utils.data.DataLoader(
-                dataset=CIFAR10NP(
-                    data_path=data_path,
-                    label_path=label_path,
-                    transform=TRANSFORM,
-                ),
-                batch_size=batch_size,
-                shuffle=False,
-            )
-            accuracies[i] = calculate_acc(dataloader, model, device)
-
-        accuracies = np.round(accuracies, decimals=6)
-        np.save(f"{temp_file_path}val_sets.npy", accuracies)
+    if not os.path.exists(f"{temp_file_path}val_sets.npy") or args.compute_acc:
+        eval_validation(
+            dataset_path,
+            temp_file_path,
+            val_sets,
+            TRANSFORM,
+            batch_size,
+            predictor_func,
+            task_name="classification"
+        )

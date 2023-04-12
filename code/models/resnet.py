@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from models.model import Model
 
+
 class ResNet_SS(Model, nn.Module):
-    def __init__(self, num_ss_classes):
+    def __init__(self, num_ss_classes=4):
         # TODO: Allow other versions of resnet to be used.
         nn.Module.__init__(self)
         Model.__init__(self, num_ss_classes, "resnet", "chenyaofo/pytorch-cifar-models", "cifar10_resnet56")

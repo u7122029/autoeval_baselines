@@ -56,7 +56,7 @@ def load_original_cifar_dataset(device, batch_size, dataset_path):
     return train_loader, test_loader
 
 
-def get_model(name, task, num_ss_classes, device, train_ss_fc):
+def get_model(name, task, num_ss_classes, device, train_ss_fc=False):
     """
     :param name: The name of the backbone model
     :param task: The self-supervision task
@@ -160,32 +160,37 @@ def train_epoch(train_loader, ss_batch_func, model, device, criterion, optimizer
     return losses
 
 
-def test_ss(test_dataloader, model, device, ss_batch_func):
+def test_model(test_dataloader, model, device, ss_batch_func=None):
     """
     :param test_dataloader: The test dataloader
     :param model: The model to run the test dataloader over
     :param device: The device
-    :param ss_batch_func: The function to convert each batch from test_dataloader to suit the self-supervision task
+    :param ss_batch_func: The function to convert each batch from test_dataloader to suit the self-supervision task.
+                            If None, then we test for classification accuracy.
     :return: The accuracy of the model on the test dataloader and the corresponding losses for each batch.
     """
     criterion = nn.CrossEntropyLoss()
     model.eval()
     correct = []
     losses = AverageMeter()
-    for batch_idx, (inputs, _) in enumerate(test_dataloader):
-        inputs, labels = ss_batch_func(inputs)
+
+    for batch_idx, (inputs, labels) in enumerate(test_dataloader):
+        if ss_batch_func:
+            inputs, labels = ss_batch_func(inputs)
+
         inputs, labels = inputs.to(device), labels.to(device)
 
         with torch.no_grad():
-            _, outputs = model(inputs)
-            loss = criterion(outputs, labels)
+            class_out, ss_out = model(inputs)
+            loss = criterion(ss_out if ss_batch_func else class_out, labels)
             losses.update(loss.item(), inputs.size(0))
 
-            _, predicted = outputs.max(1)
+            _, predicted = ss_out.max(1) if ss_batch_func else class_out.max(1)
             correct.append(predicted.eq(labels).cpu())
+
     acc = torch.cat(correct).numpy().mean() * 100
 
-    print('Jigsaw self-supervised.avg: {:.4f}%'.format(acc))
+    print(f"{'self-supervised' if ss_batch_func else 'classification'} average: {acc:.4f}%")
 
     return acc, losses
 
@@ -242,8 +247,8 @@ def train_ss_fc(
         # Class accuracy stays constant at 94.37%. So we don't need to calculate it.
         # class_acc = test_class(test_loader, model, device, args)
 
-        # evaluate on test set for jigsaw prediction
-        ss_acc, val_losses = test_ss(
+        # evaluate on test set for self-supervised prediction
+        ss_acc, val_losses = test_model(
             test_loader,
             model,
             device,
@@ -265,13 +270,13 @@ def train_ss_fc(
         # remember best prec@1 and save checkpoint
         is_best = ss_acc > best_ss_acc
         # best_class_acc = max(class_acc, best_class_acc)
-        best_jigsaw_acc = max(ss_acc, best_ss_acc)
+        best_ss_acc = max(ss_acc, best_ss_acc)
         save_checkpoint(
             {
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
                 # 'best_prec1': best_class_acc,
-                f'best_{ss_task_name}1': best_jigsaw_acc
+                f'best_{ss_task_name}1': best_ss_acc
             },
             is_best,
             model.model_name,

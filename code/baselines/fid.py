@@ -20,7 +20,6 @@ from tqdm import tqdm
 
 from utils import CIFAR10NP, TRANSFORM
 
-
 parser = argparse.ArgumentParser(description="AutoEval baselines - FID")
 parser.add_argument(
     "--model", required=True, type=str, help="the model used to run this script"
@@ -67,10 +66,10 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     sigma2 = np.atleast_2d(sigma2)
 
     assert (
-        mu1.shape == mu2.shape
+            mu1.shape == mu2.shape
     ), "Training and test mean vectors have different lengths"
     assert (
-        sigma1.shape == sigma2.shape
+            sigma1.shape == sigma2.shape
     ), "Training and test covariances have different dimensions"
 
     diff = mu1 - mu2
@@ -79,8 +78,8 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
     if not np.isfinite(covmean).all():
         msg = (
-            "fid calculation produces singular product; "
-            "adding %s to diagonal of cov estimates" % eps
+                "fid calculation produces singular product; "
+                "adding %s to diagonal of cov estimates" % eps
         )
         print(msg)
         offset = np.eye(sigma1.shape[0]) * eps
@@ -148,7 +147,7 @@ if __name__ == "__main__":
 
     # need to do fid calculation
     if not os.path.exists(temp_file_path) or not os.path.exists(
-        f"{temp_file_path}{train_set}.npy"
+            f"{temp_file_path}{train_set}.npy"
     ):
         if not os.path.exists(temp_file_path):
             os.makedirs(temp_file_path)

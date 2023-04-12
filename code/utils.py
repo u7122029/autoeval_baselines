@@ -20,6 +20,12 @@ TRANSFORM = torchvision.transforms.Compose(
     ]
 )
 
+valid_models = [
+    "resnet",
+    "repvgg",
+    "mobilenetv2"
+]
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -70,7 +76,7 @@ def predict_multiple(model, imgs):
     # NOTE: make sure model is in validation mode
     model.eval()
     with torch.no_grad():
-        prob = model(imgs)
+        prob, _ = model(imgs)  # TODO: edit the models for other baselines.
         pred = prob.argmax(dim=1, keepdim=True)
     return pred, torch.nn.functional.softmax(prob, dim=1).cpu().numpy()
 

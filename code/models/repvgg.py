@@ -8,6 +8,7 @@ class RepVGG_SS(Model, nn.Module):
     """
     num_ss_classes: number of self supervised task classes. 4 by default for rotation.
     """
+
     def __init__(self, num_ss_classes=4):
         nn.Module.__init__(self)
         Model.__init__(self, num_ss_classes, "repvgg", "chenyaofo/pytorch-cifar-models", "cifar10_repvgg_a0")
@@ -23,7 +24,6 @@ class RepVGG_SS(Model, nn.Module):
         # rotation prediction FC layer
         # not frozen since this is a completely new layer.
         self.fc_ss = nn.Linear(1280, self.num_ss_classes)
-
 
     def forward(self, x):
         x = self.feat(x)

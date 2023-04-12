@@ -7,12 +7,10 @@ sys.path.append(".")
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
-import torch
 import torch.utils.data
 from tqdm import tqdm
 
 from utils import predict_multiple, CIFAR10NP, TRANSFORM
-
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - ConfScore")
 parser.add_argument(
@@ -63,7 +61,7 @@ if __name__ == "__main__":
 
     # need to do confscore calculation
     if not os.path.exists(temp_file_path) or not os.path.exists(
-        f"{temp_file_path}{train_set}.npy"
+            f"{temp_file_path}{train_set}.npy"
     ):
         if not os.path.exists(temp_file_path):
             os.makedirs(temp_file_path)

@@ -1,6 +1,8 @@
 # Abstract model class
+from abc import ABC
+
 import torch
-from abc import ABC, abstractmethod
+
 
 class Model(ABC):
     def __init__(self, num_ss_classes, model_name, repo, weights_name):
@@ -13,9 +15,8 @@ class Model(ABC):
         # Freeze backbone and classification layer
         for param in self.model.parameters():
             param.requires_grad = False
-    
+
     # TODO: implement this!
     """@abstractmethod
     def load_ss_fc(self):
         pass"""
-

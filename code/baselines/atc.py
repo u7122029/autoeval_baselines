@@ -15,7 +15,6 @@ from tqdm import tqdm
 
 from utils import predict_multiple, CIFAR10NP, TRANSFORM
 
-
 parser = argparse.ArgumentParser(description="AutoEval baselines - ATC")
 parser.add_argument(
     "--model", required=True, type=str, help="the model used to run this script"
@@ -91,7 +90,7 @@ if __name__ == "__main__":
 
     # need to do atc calculation
     if not os.path.exists(temp_file_path) or not os.path.exists(
-        f"{temp_file_path}{train_set}.npy"
+            f"{temp_file_path}{train_set}.npy"
     ):
         if not os.path.exists(temp_file_path):
             os.makedirs(temp_file_path)
