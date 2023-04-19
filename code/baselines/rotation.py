@@ -149,6 +149,8 @@ if __name__ == "__main__":
 
     # paths
     dataset_path = args.dataset_path
+    if not dataset_path or dataset_path[-1] != "/":
+        dataset_path += "/"
     model_name = args.model
     grid_length = args.grid_length
 
