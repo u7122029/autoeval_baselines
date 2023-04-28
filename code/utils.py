@@ -59,14 +59,19 @@ class CIFAR10NP(torch.utils.data.Dataset):
         self.labels = np.load(label_path).astype(dtype=np.int64)
         self.transform = transform
 
+        if self.transform:
+            new_imgs = []
+            for img in self.imgs:
+                new_imgs.append(self.transform(img))
+
+            self.imgs = np.array(new_imgs)
+
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
         img = self.imgs[idx]
         label = self.labels[idx]
-        if self.transform:
-            img = self.transform(img)
         return img, label
 
 

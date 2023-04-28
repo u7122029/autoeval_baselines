@@ -1,5 +1,5 @@
 # Abstract model class
-from abc import ABC
+from abc import ABC, abstractmethod
 
 import torch
 
@@ -17,6 +17,7 @@ class Model(ABC):
             param.requires_grad = False
 
     # TODO: implement this!
-    """@abstractmethod
+    @abstractmethod
     def load_ss_fc(self):
-        pass"""
+        # Load the weights of the self-supervised fc layer.
+        pass

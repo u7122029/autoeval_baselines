@@ -19,6 +19,7 @@ class ResNet_SS(Model, nn.Module):
         # The grid has grid_length ** 2 pieces, so there are (grid_length ** 2)! permutations.
         self.fc_ss = nn.Linear(64, self.num_ss_classes)
 
+
     def forward(self, x):
         x = self.feat(x)
         # flatten the feature representation
