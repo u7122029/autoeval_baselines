@@ -11,6 +11,8 @@ import torchvision.transforms as transforms
 from models.mobilenetv2 import MobileNet_SS
 from models.repvgg import RepVGG_SS
 from models.resnet import ResNet_SS
+from models.densenet import DenseNet_SS
+from models.shufflenet import ShuffleNet_SS
 from utils import (
     AverageMeter,
     adjust_learning_rate,
@@ -56,7 +58,7 @@ def load_original_cifar_dataset(device, batch_size, dataset_path):
     return train_loader, test_loader
 
 
-def get_model(name, task, num_ss_classes, device, train_ss_fc=False):
+def get_model(name, task, num_ss_classes, device, load_best_fc=True):
     """
     :param name: The name of the backbone model
     :param task: The self-supervision task
@@ -65,7 +67,6 @@ def get_model(name, task, num_ss_classes, device, train_ss_fc=False):
     :param train_ss_fc: Whether to train the self-supervision FC layer (True) or not (False).
     :return: Instance of the model, with backbone model weights preloaded.
     """
-    fc_ss_weights = None
 
     if name == "resnet":
         model = ResNet_SS(num_ss_classes)
@@ -73,25 +74,19 @@ def get_model(name, task, num_ss_classes, device, train_ss_fc=False):
         model = RepVGG_SS(num_ss_classes)
     elif name == "mobilenetv2":
         model = MobileNet_SS(num_ss_classes)
+    elif "densenet" in name:
+        version = int(name.replace("densenet", ""))
+        model = DenseNet_SS(version, num_ss_classes)
+    elif name == "shufflenet":
+        model = ShuffleNet_SS(num_ss_classes)
     else:
         # Absolutely impossible case since this is covered by argparse.
         # If this NameError occurs please check the choices in the arg parser.
         raise NameError(f"Model name {name} does not exist.")
 
-    model_state = model.state_dict()
-    if not train_ss_fc:
+    if load_best_fc:
         # If we are not training the self-supervision FC layer, we should try to load in its best checkpoint
-        fc_ss_weights = torch.load(f"../model_weights/{name}-{task}-fc.pt", map_location=torch.device("cpu"))
-
-        # load the rotation FC layer weights
-        # NOTE: temporary for now. 
-        for key, value in fc_ss_weights.items():
-            if key in [f"fc_{task}.weight", "fc_ss.weight"]:
-                model_state["fc_ss.weight"] = value
-            elif key in [f"fc_{task}.bias", "fc_ss.bias"]:
-                model.state["fc_ss.bias"] = value
-
-        model.load_state_dict(model_state)
+        model.load_ss_fc(f"../model_weights/{name}-{task}-fc.pt", is_local=True)
         model.eval()
 
     model.to(device)
@@ -271,13 +266,16 @@ def train_ss_fc(
         is_best = ss_acc > best_ss_acc
         # best_class_acc = max(class_acc, best_class_acc)
         best_ss_acc = max(ss_acc, best_ss_acc)
-        save_checkpoint(
-            {
+        """
+        {
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
                 # 'best_prec1': best_class_acc,
                 f'best_{ss_task_name}1': best_ss_acc
             },
+        """
+        save_checkpoint(
+            model.state_dict(), # We don't need the epoch number of the best ss_acc
             is_best,
             model.model_name,
             ss_task_name

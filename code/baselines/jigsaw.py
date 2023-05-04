@@ -17,7 +17,11 @@ import torch.utils.data
 import matplotlib.pyplot as plt  # visualisation
 
 from utils import (
-    TRANSFORM, construct_permutation_mappings, fit_lr)
+    TRANSFORM,
+    construct_permutation_mappings,
+    fit_lr,
+    valid_models
+)
 
 from training_utils import (
     load_original_cifar_dataset,
@@ -30,11 +34,6 @@ from eval_utils import (
     eval_train
 )
 
-valid_models = [
-    "resnet",
-    "repvgg",
-    "mobilenetv2"
-]
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Jigsaw Prediction")
 parser.add_argument(
@@ -67,8 +66,8 @@ parser.add_argument(
 )
 parser.add_argument(
     "--train-ss-layer",
+    action="store_true",
     required=False,
-    type=bool,
     default=False,
     help="True if the model's Fully Connected (FC) layer for jigsaw prediction should be trained, and False otherwise."
 )
@@ -86,7 +85,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--epochs',
-    default=50,
+    default=25,
     type=float,
     help='Number of epochs for training.'
 )

@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from utils import TRANSFORM, fit_lr
+from utils import TRANSFORM, fit_lr, valid_models
 from training_utils import (
     load_original_cifar_dataset,
     get_model,
@@ -19,8 +19,6 @@ from eval_utils import (
     eval_train,
     eval_validation
 )
-
-valid_models = ["mobilenetv2"]  # Temporarily exclude resnet and repvgg to preserve the rotation FC .pt files.
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Rotation Prediction")
 parser.add_argument(
@@ -53,8 +51,8 @@ parser.add_argument(
 )
 parser.add_argument(
     "--train-ss-layer",
+    action="store_true",
     required=False,
-    type=bool,
     default=False,
     help="True if the model's Fully Connected (FC) layer for jigsaw prediction should be trained, and False otherwise."
 )
@@ -72,15 +70,15 @@ parser.add_argument(
 )
 parser.add_argument(
     '--epochs',
-    default=50,
+    default=25,
     type=float,
     help='Number of epochs for training.'
 )
 parser.add_argument(
     '--show-graphs',
-    default=True,
-    type=bool,
-    help='True if the graphs of classification accuracy vs jigsaw accuracy should be shown before RMSE calculation'
+    action="store_true",
+    default=False,
+    help='True if the graphs of classification accuracy vs jigsaw accuracy should be shown after RMSE calculation'
 )
 
 

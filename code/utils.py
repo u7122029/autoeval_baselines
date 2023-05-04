@@ -23,7 +23,11 @@ TRANSFORM = torchvision.transforms.Compose(
 valid_models = [
     "resnet",
     "repvgg",
-    "mobilenetv2"
+    "mobilenetv2",
+    "densenet121",
+    "densenet161",
+    "densenet169",
+    "shufflenet"
 ]
 
 
@@ -59,21 +63,15 @@ class CIFAR10NP(torch.utils.data.Dataset):
         self.labels = np.load(label_path).astype(dtype=np.int64)
         self.transform = transform
 
-        if self.transform:
-            new_imgs = []
-            for img in self.imgs:
-                new_imgs.append(self.transform(img))
-
-            self.imgs = np.array(new_imgs)
-
     def __len__(self):
         return len(self.labels)
 
     def __getitem__(self, idx):
         img = self.imgs[idx]
         label = self.labels[idx]
+        if self.transform:
+            img = self.transform(img)
         return img, label
-
 
 def predict_multiple(model, imgs):
     # assume multiple image inputs with shape (N, 3, 32, 32) where N is the batch size
@@ -112,6 +110,7 @@ def construct_permutation_mappings(grid_length):
 
 
 def save_checkpoint(state, is_best, model_name, task):
+    # TODO: Possibly shift this to the model class.
     """Saves checkpoint to disk"""
     directory = f"../model_weights/{model_name}/{task}"
     if not os.path.exists(directory):

@@ -17,6 +17,7 @@ from eval_utils import (
 )
 
 from utils import predict_multiple, TRANSFORM, valid_models
+from training_utils import get_model
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - get_accuracy")
 parser.add_argument(
@@ -64,18 +65,9 @@ if __name__ == "__main__":
 
     batch_size = 500
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    # load the model
-    if model_name == "resnet":
-        model = ResNet_SS()
-    elif model_name == "repvgg":
-        model = RepVGG_SS()
-    elif model_name == "mobilenetv2":
-        model = MobileNet_SS()
-    else:
-        # this should never happen.
-        raise ValueError("Unexpected model_name")
 
-    model.to(device)
+    # load the model
+    model = get_model(model_name, "accuracy", 4, device, load_best_fc=False)
     model.eval()
 
     # if there is no temp file path, make it.

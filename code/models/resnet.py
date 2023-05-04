@@ -25,3 +25,4 @@ class ResNet_SS(Model, nn.Module):
         # flatten the feature representation
         x = x.view(x.size(0), -1)
         return self.fc(x), self.fc_ss(x)
+
