@@ -8,7 +8,7 @@ class DenseNet_SS(Model, nn.Module):
     def __init__(self, version=121, num_ss_classes=4):
         nn.Module.__init__(self)
 
-        Model.__init__(self, num_ss_classes, "resnet", "u7122029/PyTorch_CIFAR10", f"densenet{version}")
+        Model.__init__(self, num_ss_classes, f"densenet{version}", "u7122029/PyTorch_CIFAR10", f"densenet{version}")
 
         # feature extraction backbone
         self.feat = self.model.features

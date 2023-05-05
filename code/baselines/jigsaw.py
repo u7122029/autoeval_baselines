@@ -91,9 +91,9 @@ parser.add_argument(
 )
 parser.add_argument(
     '--show-graphs',
-    default=True,
-    type=bool,
-    help='True if the graphs of classification accuracy vs jigsaw accuracy should be shown before RMSE calculation'
+    action="store_true",
+    default=False,
+    help='True if the graphs of classification accuracy vs jigsaw accuracy should be shown after RMSE calculation'
 )
 
 
