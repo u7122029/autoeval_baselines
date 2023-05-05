@@ -162,7 +162,7 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Get the model given the input parameters.
-    model = get_model(model_name, task_name, 4, device, args.train_ss_layer)
+    model = get_model(model_name, task_name, 4, device, not args.train_ss_layer)
 
     ss_batch_func = lambda inp_batch: rotate_batch(inp_batch, "rand")
     # Train the model if required
