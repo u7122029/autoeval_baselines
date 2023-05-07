@@ -68,8 +68,9 @@ def get_model(name, task, num_ss_classes, device, load_best_fc=True):
     :return: Instance of the model, with backbone model weights preloaded.
     """
 
-    if name == "resnet":
-        model = ResNet_SS(num_ss_classes)
+    if "resnet" in name:
+        version = int(name.replace("resnet", ""))
+        model = ResNet_SS(version, num_ss_classes)
     elif name == "repvgg":
         model = RepVGG_SS(num_ss_classes)
     elif name == "mobilenetv2":

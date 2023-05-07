@@ -4,53 +4,46 @@ Welcome to DataCV Challenge 2023!
 
 This is the development kit repository for [the 1st DataCV Challenge](https://sites.google.com/view/vdu-cvpr23/competition?authuser=0). This repository includes details on how to download datasets, run baseline models, and organize your result as `answer.zip`. The final evaluation will occur on the [CodeLab evaluation server](https://codalab.lisn.upsaclay.fr/competitions/10221), where all competition information, rules, and dates can be found.
 
-## Overview
-Label-free model evaluation is the competition task. It is different from the standard evaluation that calculates model accuracy based on model outputs and corresponding test labels. Label-free model evaluation (AutoEval), on the other hand, has no access to test labels. In this competition, participants need to **design a method that can estimate the model accuracies on test sets without ground truths**.
-
+More specifically, this is a fork of said repository for the research paper titled **Is the Linear Correlation Between Classification Accuracy and Self-Supervision Accuracy Preserved Between Model Architectures?** We have amended each section to explain our problem.
 ## Table of Contents
 
 - [DataCV Challenge @ CVPR 2023](#datacv-challenge--cvpr-2023)
-	- [Overview](#overview)
-	- [Table of Contents](#table-of-contents)
-	- [Competition Submission](#competition-submission)
-	- [Challenge Data](#challenge-data)
-	- [Classifiers being Evaluated](#classifiers-being-evaluated)
-	- [Organize Results for Submission](#organize-results-for-submission)
-	- [Several Baselines](#several-baselines)
-		- [Baseline Results](#baseline-results)
-			- [ResNet-56](#resnet-56)
-			- [RepVGG-A0](#repvgg-a0)
-		- [Code-Execution](#code-execution)
-		- [Baseline Description](#baseline-description)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Related Work](#related-work)
+  - [Challenge Data](#challenge-data)
+  - [Classifiers being Evaluated](#classifiers-being-evaluated)
+  - [Organize Results for Submission](#organize-results-for-submission)
+  - [Several Baselines](#several-baselines)
+  	- [Baseline Description](#baseline-description)
+    - [Baseline Results](#baseline-results)
+        - [ResNet-56](#resnet-56)
+        - [RepVGG-A0](#repvgg-a0)
+    
+  - [Code-Execution](#code-execution)
+  
+## Abstract
+We verify that the linear correlation between classification accuracy and self-supervision accuracy for rotation prediction and jigsaw classification holds between various computer vision neural network models over the CIFAR-10 dataset. We observed that there is a medium to strong linear correlation between classification accuracy and rotation prediction accuracy, while the correlation between classification accuracy and jigsaw classification accuracy is much weaker, to the extent that some models do not exhibit any correlation at all. As a consequence, it is not always possible to accurately judge the performance of a model on a supervised task given the same model's performance on a self-supervised task.
+## Overview
+Constructing a dataset of images with labels is a repetitive and laborious task, given that the most accurate computer vision machine learning models require tens of thousands, perhaps even millions of images and every one of them must be manually labelled.
 
-## Competition Submission
-In total, the test set comprises 100 datasets. As a result, each model's accuracy should be predicted 100 times. Given that there are two models to be evaluated, the expected number of lines in the "answer.txt" file is 200.
+One way to bypass this daunting task is to automatically generate labels for these images, however, current machine learning models are generally not as accurate as the human brain at identifying images. Computers on the other hand are generally good at performing image transformations such as rotations, jigsaw-making (dividing the image into a grid of squares and rearranging the squares, hence constructing a jigsaw puzzle), blurring, sharpening, and many more. 
 
-The first 100 lines represent the accuracy predictions of the ResNet model, while the second 100 lines represent those of the RepVGG model. Each of the 100-line predictions is the accuracy prediction for the model on *xxx.npy* dataset, where *xxx* goes from *001* to *100*.
+Using this, we can ask ourselves whether there is a correlation of some form between a model's performance at classifying images and said model's performance at some self-supervised task, such as rotation prediction - predicting the orientation of an image - or jigsaw puzzle solving - predicting the permutation of a jigsaw-made image. For both tasks, labels can easily be generated accurately by a computer without human intervention - hence the name "self-supervision". If there is a correlation, we can then judge the classification accuracy of a model given its performance on a self-supervised task. In a broader sense, it will be much easier to verify if a given supervised task can have a model fitted to it with sufficiently high performance - all before any time or human resources are spent generating labels.
 
-To prepare your submission, you need to write your predicted accuracies into a plain text file named "**answer.txt**", with one prediction (e.g., 0.876543) per line. For example, 
+### Related Work
+#### Image Classification - Self-Supervised Task Performance
+Aside from the work that this repository was forked from [ref], our work also focuses on the findings of [ref] which observed a strong linear correlation between a model's performance on image classification and rotation prediction over MNIST, CIFAR10 and ImageNet, where for each dataset, different models were used. Our work keeps the dataset (i.e: CIFAR-10) fixed, and we test various models on this dataset to verify that the linear correlation between classification accuracy and rotation prediction accuracy is preserved. In the future work section of the same paper, the writers also remark that there is a strong linear correlation between classification accuracy and jigsaw classification accuracy. We verify this finding in our work as well.
+#### CIFAR-10 Dataset
+#### ResNet
+#### DenseNet
+#### MobileNetv2
+#### ShuffleNet
+#### RepVGG
+#### Image Classification
+#### Self-Supervised Tasks
 
-```
-0.100000
-0.100000
-.
-.
-.
-0.100000
-0.100000
-0.100000
-0.100000
-```
-Then, **zip** the text file and it submit to the competition website. 
-
-**How to organize an answer.txt file for validation evaluation?**
-
-Please refer to [Organize Results for Submission](#organize-results-for-submission). 
-
-In the competition, you are only required to submit the zipped prediction results named the "answer.txt". We give an example for this txt file at [answer.txt](https://drive.google.com/file/d/1WJg2_RCJ1liFCAKfSSthOoFsj5TCMZCK/view) demo.
-
-
-## Challenge Data
+## Datasets Used
 The training dataset consists of 1,000 transformed datasets from the original [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) test set, using the transformation strategy proposed by [Deng et al. (2021)](https://arxiv.org/abs/2007.02915). The validation set was composed of [CIFAR-10.1](https://github.com/modestyachts/CIFAR-10.1), [CIFAR-10.1-C](https://github.com/hendrycks/robustness) (add corruptions [(Hendrycks et al., 2019)](https://arxiv.org/abs/1903.12261) to [CIFAR-10.1](https://github.com/modestyachts/CIFAR-10.1) dataset), and CIFAR-10-F (real-world images collected from [Flickr](https://www.flickr.com))
 
 The CIFAR-10.1 dataset is a single dataset. In contrast, CIFAR-10.1-C and CIFAR-10-F contain 19 and 20 datasets, respectively. Therefore, the total number of datasets in the validation set is 40.

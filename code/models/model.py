@@ -17,7 +17,7 @@ class Model(ABC, nn.Module):
         for param in self.model.parameters():
             param.requires_grad = False
 
-        self.fc_ss = None # Every model needs this self-supervised layer!
+        self.fc_ss = None # Every model needs this self-supervised layer, unless it is only being used for class acc.
 
 
     def load_ss_fc(self, link, is_local=False):
@@ -25,10 +25,13 @@ class Model(ABC, nn.Module):
         if is_local:
             pretrained_state_dict = torch.load(link, map_location="cpu")
         else:
-            # TODO: Allow loading from the releases section.
-            pass
-        our_state_dict = self.state_dict()
-        our_state_dict["fc_ss.1.weight"] = pretrained_state_dict["fc_ss.1.weight"]
-        our_state_dict["fc_ss.1.bias"] = pretrained_state_dict["fc_ss.1.bias"]
+            pretrained_state_dict = torch.hub.load_state_dict_from_url(link, map_location="cpu")
 
+        our_state_dict = self.state_dict()
+        if "fc_ss.1.weight" in pretrained_state_dict:
+            our_state_dict["fc_ss.1.weight"] = pretrained_state_dict["fc_ss.1.weight"]
+            our_state_dict["fc_ss.1.bias"] = pretrained_state_dict["fc_ss.1.bias"]
+        else:
+            our_state_dict["fc_ss.weight"] = pretrained_state_dict["fc_ss.weight"]
+            our_state_dict["fc_ss.bias"] = pretrained_state_dict["fc_ss.bias"]
 

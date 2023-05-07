@@ -191,7 +191,7 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Get the model given the input parameters.
-    model = get_model(model_name, task_name, num_permutations, device, args.train_ss_layer)
+    model = get_model(model_name, task_name, num_permutations, device, not args.train_ss_layer)
 
     ss_batch_func = lambda inp_batch: jigsaw_batch(inp_batch, model.num_ss_classes, int_to_perm)
     # Train the model if required

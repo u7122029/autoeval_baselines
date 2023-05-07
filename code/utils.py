@@ -21,13 +21,18 @@ TRANSFORM = torchvision.transforms.Compose(
 )
 
 valid_models = [
-    "resnet",
-    "repvgg",
-    "mobilenetv2",
-    "densenet121",
-    "densenet161",
-    "densenet169",
-    "shufflenet"
+    "resnet20", # rotation, jigsaw done
+    "resnet32", # rotation, jigsaw done
+    "resnet44", # rotation, jigsaw done
+    "resnet56", # rotation, jigsaw done
+    "resnet110", # rotation, jigsaw done
+    "resnet1202", #
+    "repvgg", # rotation, jigsaw done
+    "mobilenetv2", # rotation, jigsaw done
+    "densenet121", # rotation, jigsaw done
+    "densenet161", # rotation, jigsaw done
+    "densenet169", # rotation, jigsaw done
+    "shufflenet" # rotation, jigsaw done
 ]
 
 
