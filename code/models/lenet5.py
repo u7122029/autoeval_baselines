@@ -1,0 +1,26 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+from models.model import Model
+
+
+class LeNet5_SS(Model, nn.Module):
+    def __init__(self, num_ss_classes=4):
+        nn.Module.__init__(self)
+        Model.__init__(self, num_ss_classes, "lenet5", "u7122029/pytorch-cifar10", "lenet5")
+
+        # feature extraction backbone
+        self.feat = self.model[:-1]
+
+        # classification FC layer
+        self.fc = self.model.fc2
+
+        # jigsaw prediction FC layer
+        self.fc_ss = nn.Linear(self.fc.in_features, self.num_ss_classes)
+
+    def forward(self, x):
+        x = self.feat(x)
+        out_class = self.fc(x)
+        out_ss = self.fc_ss(x)
+        return out_class, out_ss

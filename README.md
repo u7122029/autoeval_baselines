@@ -25,11 +25,25 @@ More specifically, this is a fork of said repository for the research paper titl
 ## Abstract
 We verify that the linear correlation between classification accuracy and self-supervision accuracy for rotation prediction and jigsaw classification holds between various computer vision neural network models over the CIFAR-10 dataset. We observed that there is a medium to strong linear correlation between classification accuracy and rotation prediction accuracy, while the correlation between classification accuracy and jigsaw classification accuracy is much weaker, to the extent that some models do not exhibit any correlation at all. As a consequence, it is not always possible to accurately judge the performance of a model on a supervised task given the same model's performance on a self-supervised task.
 ## Overview
-Constructing a dataset of images with labels is a repetitive and laborious task, given that the most accurate computer vision machine learning models require tens of thousands, perhaps even millions of images and every one of them must be manually labelled.
+Constructing a dataset of images for a supervised task such as classification requires generating labels for every image.
+Each image must be manually labelled by humans. Furthermore, the most accurate computer vision machine learning models 
+required tens of thousands, perhaps even millions of images to train on. This makes labelling images a time-consuming, 
+repetitive and laborious task without much obvious potential for automation.
 
-One way to bypass this daunting task is to automatically generate labels for these images, however, current machine learning models are generally not as accurate as the human brain at identifying images. Computers on the other hand are generally good at performing image transformations such as rotations, jigsaw-making (dividing the image into a grid of squares and rearranging the squares, hence constructing a jigsaw puzzle), blurring, sharpening, and many more. 
+One way to automate this task is to computationally generate labels for these images, however, current machine learning 
+models are generally not as accurate as the human brain at identifying images. Computers on the other hand are generally 
+good at performing image transformations such as rotations, jigsaw-making (dividing the image into a grid of squares and
+rearranging the squares, hence constructing a jigsaw puzzle), blurring, sharpening, and many more operations. 
 
-Using this, we can ask ourselves whether there is a correlation of some form between a model's performance at classifying images and said model's performance at some self-supervised task, such as rotation prediction - predicting the orientation of an image - or jigsaw puzzle solving - predicting the permutation of a jigsaw-made image. For both tasks, labels can easily be generated accurately by a computer without human intervention - hence the name "self-supervision". If there is a correlation, we can then judge the classification accuracy of a model given its performance on a self-supervised task. In a broader sense, it will be much easier to verify if a given supervised task can have a model fitted to it with sufficiently high performance - all before any time or human resources are spent generating labels.
+In this way, we can ask ourselves whether there is a correlation of some form between a model's performance at a 
+supervised task such as image classification and said model's performance at some self-supervised task, such as rotation 
+prediction - predicting the orientation of an image - or jigsaw puzzle solving - predicting the permutation of a 
+jigsaw-made image. For both tasks, labels can easily be generated accurately by a computer without human intervention - 
+hence the name "self-supervision". If there is a correlation, we can then judge the classification accuracy of a model 
+given its performance on a self-supervised task. In a broader sense, it will be much easier to verify if a given 
+supervised task can have a model fitted to it with sufficiently high performance - all before any time or human 
+resources are spent generating labels.
+
 
 ### Related Work
 #### Image Classification - Self-Supervised Task Performance
@@ -104,7 +118,7 @@ The table presented below displays the results of the foundational measurements 
 | ATC       | 15.168 | 8.050  | 7.694 | 8.132  |
 | FID       | 10.718 | 6.318  | 5.245 | 5.966  |
 
-### Code-Execution
+### Code-Execution/Method
 To install required Python libraries, execute the code below.
 ```bash
 pip3 install -r requirements.txt

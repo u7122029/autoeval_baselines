@@ -46,7 +46,7 @@ def eval_train(dataset_path, temp_file_path, train_set, transform, batch_size, p
 
 
 def eval_validation(dataset_path, temp_file_path, val_sets, transform, batch_size, predictor_func,
-                    task_name="self-supervision"):
+                    task_name="self-supervision", save_results=True):
     """
 
     :param dataset_path:
@@ -80,6 +80,5 @@ def eval_validation(dataset_path, temp_file_path, val_sets, transform, batch_siz
             shuffle=False,
         )
         acc[i] = predictor_func(dataloader)
-        # jigsaw_pred(dataloader, model, device, num_permutations, int_to_perm)
-
-    np.save(f"{temp_file_path}val_sets.npy", acc)
+    if save_results:
+        np.save(f"{temp_file_path}val_sets.npy", acc)

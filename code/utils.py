@@ -26,15 +26,21 @@ valid_models = [
     "resnet44", # rotation, jigsaw done
     "resnet56", # rotation, jigsaw done
     "resnet110", # rotation, jigsaw done
-    "resnet1202", #
+    "resnet1202", # rotation, jigsaw done
     "repvgg", # rotation, jigsaw done
     "mobilenetv2", # rotation, jigsaw done
     "densenet121", # rotation, jigsaw done
     "densenet161", # rotation, jigsaw done
     "densenet169", # rotation, jigsaw done
-    "shufflenet" # rotation, jigsaw done
+    "shufflenet", # rotation, jigsaw done
+    "inceptionv3",
+    "linear", # rotation, jigsaw done
+    "alexnet", # rotation, jigsaw done
+    "lenet5",
+    "obc"
 ]
 
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""

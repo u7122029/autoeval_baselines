@@ -5,13 +5,13 @@ import torch
 import torch.nn as nn
 
 class Model(ABC, nn.Module):
-    def __init__(self, num_ss_classes, model_name, repo, weights_name):
+    def __init__(self, num_ss_classes, model_name, repo, weights_name, pretrained=True, force_reload=False):
         super().__init__()
         self.num_ss_classes = num_ss_classes
         self.model_name = model_name
 
         # load backbone + classification layer
-        self.model = torch.hub.load(repo, weights_name, pretrained=True)
+        self.model = torch.hub.load(repo, weights_name, pretrained=pretrained, force_reload=force_reload)
 
         # Freeze backbone and classification layer
         for param in self.model.parameters():

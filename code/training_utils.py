@@ -13,6 +13,11 @@ from models.repvgg import RepVGG_SS
 from models.resnet import ResNet_SS
 from models.densenet import DenseNet_SS
 from models.shufflenet import ShuffleNet_SS
+from models.linear import Linear_SS
+from models.alexnet import AlexNet_SS
+from models.obc import OBC_SS
+from models.inceptionv3 import Inceptionv3_SS
+from models.lenet5 import LeNet5_SS
 from utils import (
     AverageMeter,
     adjust_learning_rate,
@@ -80,6 +85,16 @@ def get_model(name, task, num_ss_classes, device, load_best_fc=True):
         model = DenseNet_SS(version, num_ss_classes)
     elif name == "shufflenet":
         model = ShuffleNet_SS(num_ss_classes)
+    elif name == "inceptionv3":
+        model = Inceptionv3_SS(num_ss_classes)
+    elif name == "linear":
+        model = Linear_SS(num_ss_classes)
+    elif name == "alexnet":
+        model = AlexNet_SS(num_ss_classes)
+    elif name == "lenet5":
+        model = LeNet5_SS(num_ss_classes)
+    elif name == "obc":
+        model = OBC_SS(num_ss_classes, device)
     else:
         # Absolutely impossible case since this is covered by argparse.
         # If this NameError occurs please check the choices in the arg parser.
@@ -267,14 +282,6 @@ def train_ss_fc(
         is_best = ss_acc > best_ss_acc
         # best_class_acc = max(class_acc, best_class_acc)
         best_ss_acc = max(ss_acc, best_ss_acc)
-        """
-        {
-                'epoch': epoch + 1,
-                'state_dict': model.state_dict(),
-                # 'best_prec1': best_class_acc,
-                f'best_{ss_task_name}1': best_ss_acc
-            },
-        """
         save_checkpoint(
             model.state_dict(), # We don't need the epoch number of the best ss_acc
             is_best,
