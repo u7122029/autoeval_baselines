@@ -7,10 +7,6 @@ sys.path.append(".")
 import numpy as np
 import torch
 
-from models.resnet import ResNet_SS
-from models.mobilenetv2 import MobileNet_SS
-from models.repvgg import RepVGG_SS
-
 from eval_utils import (
     eval_train,
     eval_validation

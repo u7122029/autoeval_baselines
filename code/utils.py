@@ -21,26 +21,27 @@ TRANSFORM = torchvision.transforms.Compose(
 )
 
 valid_models = [
-    "resnet20", # rotation, jigsaw done
-    "resnet32", # rotation, jigsaw done
-    "resnet44", # rotation, jigsaw done
-    "resnet56", # rotation, jigsaw done
-    "resnet110", # rotation, jigsaw done
-    "resnet1202", # rotation, jigsaw done
-    "repvgg", # rotation, jigsaw done
-    "mobilenetv2", # rotation, jigsaw done
-    "densenet121", # rotation, jigsaw done
-    "densenet161", # rotation, jigsaw done
-    "densenet169", # rotation, jigsaw done
-    "shufflenet", # rotation, jigsaw done
-    "inceptionv3", # rotation, jigsaw done
-    "linear", # rotation, jigsaw done
-    "alexnet", # rotation, jigsaw done
-    "lenet5", # rotation, jigsaw done
-    "obc" # rotation, jigsaw done.
+    "resnet20",  # rotation, jigsaw done
+    "resnet32",  # rotation, jigsaw done
+    "resnet44",  # rotation, jigsaw done
+    "resnet56",  # rotation, jigsaw done
+    "resnet110",  # rotation, jigsaw done
+    "resnet1202",  # rotation, jigsaw done
+    "repvgg",  # rotation, jigsaw done
+    "mobilenetv2",  # rotation, jigsaw done
+    "densenet121",  # rotation, jigsaw done
+    "densenet161",  # rotation, jigsaw done
+    "densenet169",  # rotation, jigsaw done
+    "shufflenet",  # rotation, jigsaw done
+    "inceptionv3",  # rotation, jigsaw done
+    "linear",  # rotation, jigsaw done
+    "alexnet",  # rotation, jigsaw done
+    "lenet5",  # rotation, jigsaw done
+    "obc"  # rotation, jigsaw done.
 ]
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -83,6 +84,7 @@ class CIFAR10NP(torch.utils.data.Dataset):
         if self.transform:
             img = self.transform(img)
         return img, label
+
 
 def predict_multiple(model, imgs):
     # assume multiple image inputs with shape (N, 3, 32, 32) where N is the batch size
@@ -159,8 +161,8 @@ def fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, show_graphs=Fa
     lr_train = LinearRegression()
     lr_train.fit(train_x.reshape(-1, 1), train_y)
 
-    lr_val = LinearRegression() # Linear regression for the validation set only.
-    lr_val.fit(val_x.reshape(-1,1), val_y)
+    lr_val = LinearRegression()  # Linear regression for the validation set only.
+    lr_val.fit(val_x.reshape(-1, 1), val_y)
 
     lr_train_train_y_hat = lr_train.predict(train_x.reshape(-1, 1))
     lr_train_val_y_hat = lr_train.predict(val_x.reshape(-1, 1))

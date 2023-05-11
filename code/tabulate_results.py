@@ -1,14 +1,11 @@
-from tabulate import tabulate
 import os
-import argparse
-import torch
-from utils import fit_lr, DEVICE, TRANSFORM, valid_models
-from training_utils import test_model, load_original_cifar_dataset
-from eval_utils import eval_validation
-from models.obc import OBC_SS
-from baselines.rotation import rotate_batch, rotation_pred
+
 import numpy as np
 import pandas as pd
+from tabulate import tabulate
+
+from training_utils import load_original_cifar_dataset
+from utils import fit_lr, DEVICE, valid_models
 
 if __name__ == "__main__":
     temp_file_path = "../temp"
@@ -59,12 +56,12 @@ if __name__ == "__main__":
             df_dict[task_name]["RMSE (Exterior Domain w/ Interior Domain LR)"].append(lr_internal_rmse_external)
 
     rotation_df_full = pd.DataFrame(df_dict["rotation"]).round(4)
-    rotation_df_interior = rotation_df_full[["model", "R^2 (Interior Domain LR)", "RMSE (Interior Domain LR)"]]\
+    rotation_df_interior = rotation_df_full[["model", "R^2 (Interior Domain LR)", "RMSE (Interior Domain LR)"]] \
         .sort_values("R^2 (Interior Domain LR)", ascending=False)
-    rotation_df_exterior = rotation_df_full[["model", "R^2 (Exterior Domain LR)", "RMSE (Exterior Domain LR)"]]\
+    rotation_df_exterior = rotation_df_full[["model", "R^2 (Exterior Domain LR)", "RMSE (Exterior Domain LR)"]] \
         .sort_values("R^2 (Exterior Domain LR)", ascending=False)
     rotation_df_exterior_w_interior = rotation_df_full[
-        ["model", "R^2 (Exterior Domain w/ Interior Domain LR)", "RMSE (Exterior Domain w/ Interior Domain LR)"]]\
+        ["model", "R^2 (Exterior Domain w/ Interior Domain LR)", "RMSE (Exterior Domain w/ Interior Domain LR)"]] \
         .sort_values("R^2 (Exterior Domain w/ Interior Domain LR)", ascending=False)
 
     jigsaw_df_full = pd.DataFrame(df_dict["jigsaw"]).round(4)
@@ -82,7 +79,7 @@ if __name__ == "__main__":
         "rotation_t_interior": tabulate(rotation_df_interior, showindex="never", headers="keys", tablefmt="github"),
         "rotation_t_exterior": tabulate(rotation_df_exterior, showindex="never", headers="keys", tablefmt="github"),
         "rotation_t_exterior_w_interior": tabulate(rotation_df_exterior_w_interior,
-                                              showindex="never", headers="keys", tablefmt="github"),
+                                                   showindex="never", headers="keys", tablefmt="github"),
 
         "jigsaw_t_interior": tabulate(jigsaw_df_interior, showindex="never", headers="keys", tablefmt="github"),
         "jigsaw_t_exterior": tabulate(jigsaw_df_exterior, showindex="never", headers="keys", tablefmt="github"),

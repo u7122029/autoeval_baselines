@@ -8,16 +8,16 @@ import torch.utils.data
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
-from models.mobilenetv2 import MobileNet_SS
-from models.repvgg import RepVGG_SS
-from models.resnet import ResNet_SS
-from models.densenet import DenseNet_SS
-from models.shufflenet import ShuffleNet_SS
-from models.linear import Linear_SS
 from models.alexnet import AlexNet_SS
-from models.obc import OBC_SS
+from models.densenet import DenseNet_SS
 from models.inceptionv3 import Inceptionv3_SS
 from models.lenet5 import LeNet5_SS
+from models.linear import Linear_SS
+from models.mobilenetv2 import MobileNet_SS
+from models.obc import OBC_SS
+from models.repvgg import RepVGG_SS
+from models.resnet import ResNet_SS
+from models.shufflenet import ShuffleNet_SS
 from utils import (
     AverageMeter,
     adjust_learning_rate,
@@ -283,7 +283,7 @@ def train_ss_fc(
         # best_class_acc = max(class_acc, best_class_acc)
         best_ss_acc = max(ss_acc, best_ss_acc)
         save_checkpoint(
-            model.state_dict(), # We don't need the epoch number of the best ss_acc
+            model.state_dict(),  # We don't need the epoch number of the best ss_acc
             is_best,
             model.model_name,
             ss_task_name

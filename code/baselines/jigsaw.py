@@ -34,7 +34,6 @@ from eval_utils import (
     eval_train
 )
 
-
 parser = argparse.ArgumentParser(description="AutoEval baselines - Jigsaw Prediction")
 parser.add_argument(
     "--model",

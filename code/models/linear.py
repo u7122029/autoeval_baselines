@@ -1,8 +1,7 @@
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from models.model import Model
+
 
 class Linear_SS(Model, nn.Module):
     def __init__(self, num_ss_classes=4):
@@ -22,4 +21,3 @@ class Linear_SS(Model, nn.Module):
         out_class = self.fc(x)
         out_ss = self.fc_ss(x)
         return out_class, out_ss
-

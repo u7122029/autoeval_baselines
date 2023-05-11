@@ -1,8 +1,9 @@
 # Abstract model class
-from abc import ABC, abstractmethod
+from abc import ABC
 
 import torch
 import torch.nn as nn
+
 
 class Model(ABC, nn.Module):
     def __init__(self, num_ss_classes, model_name, repo, weights_name, pretrained=True, force_reload=False):
@@ -17,8 +18,7 @@ class Model(ABC, nn.Module):
         for param in self.model.parameters():
             param.requires_grad = False
 
-        self.fc_ss = None # Every model needs this self-supervised layer, unless it is only being used for class acc.
-
+        self.fc_ss = None  # Every model needs this self-supervised layer, unless it is only being used for class acc.
 
     def load_ss_fc(self, link, is_local=False):
         # Load the weights of the self-supervised fc layer.
@@ -34,4 +34,3 @@ class Model(ABC, nn.Module):
         else:
             our_state_dict["fc_ss.weight"] = pretrained_state_dict["fc_ss.weight"]
             our_state_dict["fc_ss.bias"] = pretrained_state_dict["fc_ss.bias"]
-
