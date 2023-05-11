@@ -35,7 +35,7 @@ parser.add_argument(
     "--compute-acc",
     required=False,
     default=False,
-    type=bool,
+    action="store_true",
     help="True if the accuracies should be recomputed. False otherwise."
 )
 

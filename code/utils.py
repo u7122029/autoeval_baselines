@@ -33,11 +33,11 @@ valid_models = [
     "densenet161", # rotation, jigsaw done
     "densenet169", # rotation, jigsaw done
     "shufflenet", # rotation, jigsaw done
-    "inceptionv3",
+    "inceptionv3", # rotation, jigsaw done
     "linear", # rotation, jigsaw done
     "alexnet", # rotation, jigsaw done
-    "lenet5",
-    "obc"
+    "lenet5", # rotation, jigsaw done
+    "obc" # rotation, jigsaw done.
 ]
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -155,39 +155,58 @@ def accuracy(output, target, topk=(1,)):
     return res
 
 
-def fit_lr(train_x, train_y, val_x, val_y, show_graphs, task_name, model_name):
-    lr = LinearRegression()
-    lr.fit(train_x.reshape(-1, 1), train_y)
+def fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, show_graphs=False, save_graphs_dir=None):
+    lr_train = LinearRegression()
+    lr_train.fit(train_x.reshape(-1, 1), train_y)
 
-    train_y_hat = lr.predict(train_x.reshape(-1, 1))
-    val_y_hat = lr.predict(val_x.reshape(-1, 1))
+    lr_val = LinearRegression() # Linear regression for the validation set only.
+    lr_val.fit(val_x.reshape(-1,1), val_y)
 
-    rmse_loss_train = mean_squared_error(y_true=train_y, y_pred=train_y_hat, squared=False)
-    rmse_loss_val = mean_squared_error(y_true=val_y, y_pred=val_y_hat, squared=False)
+    lr_train_train_y_hat = lr_train.predict(train_x.reshape(-1, 1))
+    lr_train_val_y_hat = lr_train.predict(val_x.reshape(-1, 1))
 
-    r2_train = r2_score(train_y, train_y_hat)
-    r2_val = r2_score(val_y, val_y_hat)
+    lr_val_val_y_hat = lr_val.predict(val_x.reshape(-1, 1))
+
+    lr_train_rmse_loss_train = mean_squared_error(y_true=train_y, y_pred=lr_train_train_y_hat, squared=False)
+    lr_train_rmse_loss_val = mean_squared_error(y_true=val_y, y_pred=lr_train_val_y_hat, squared=False)
+
+    lr_val_rmse_loss_val = mean_squared_error(y_true=val_y, y_pred=lr_val_val_y_hat, squared=False)
+
+    lr_train_r2_train = r2_score(train_y, lr_train_train_y_hat)
+    lr_train_r2_val = r2_score(val_y, lr_train_val_y_hat)
+
+    lr_val_r2_val = r2_score(val_y, lr_val_val_y_hat)
 
     print("Displaying Metrics")
 
-    grid = [["Metric", "Training Set", "Validation Set"],
-            ["RSME", f"{rmse_loss_train:.4f}", f"{rmse_loss_val:.4f}"],
-            ["R^2", f"{r2_train:.4f}", f"{r2_val:.4f}"]]
+    grid = [["Metric", "Training Set", "Validation Set (Val LR)", "Validation Set (Train LR)"],
+            ["RMSE", f"{lr_train_rmse_loss_train:.4f}", f"{lr_val_rmse_loss_val:.4f}", f"{lr_train_rmse_loss_val:.4f}"],
+            ["R^2", f"{lr_train_r2_train:.4f}", f"{lr_val_r2_val:.4f}", f"{lr_train_r2_val:.4f}"]]
     print(tabulate(grid, headers="firstrow", tablefmt="psql"))
 
+    plt.figure()
+    plt.title(f"Classification Acc. vs {task_name} Acc. ({model_name}) - Interior Domain")
+    plt.xlabel(f"{task_name} Accuracy")
+    plt.ylabel("Classification Accuracy")
+    plt.scatter(train_x.reshape(-1, 1), train_y, marker=".")
+    plt.plot(train_x.reshape(-1, 1), lr_train_train_y_hat, "r", label="Interior Domain Line")
+    plt.legend(loc="best")
+    if save_graphs_dir:
+        plt.savefig(f"{save_graphs_dir}/{model_name}/{task_name}/original_cifar10_corrupted.png", format="png")
+
+    plt.figure()
+    plt.title(f"Classification Acc. vs {task_name} Acc. ({model_name}) - Exterior Domain")
+    plt.xlabel(f"{task_name} Accuracy")
+    plt.ylabel("Classification Accuracy")
+    plt.scatter(val_x.reshape(-1, 1), val_y, marker=".")
+    plt.plot(val_x.reshape(-1, 1), lr_train_val_y_hat, "r", label="Interior Domain Line")
+    plt.plot(val_x.reshape(-1, 1), lr_val_val_y_hat, "g", label="Exterior Domain Line")
+    plt.legend(loc="best")
+    if save_graphs_dir:
+        plt.savefig(f"{save_graphs_dir}/{model_name}/{task_name}/other_cifar10_corrupted.png", format="png")
+
     if show_graphs:
-        plt.figure()
-        plt.title(f"Classification Accuracy vs {task_name} Accuracy ({model_name}) - Training Dataset")
-        plt.xlabel(f"{task_name} Accuracy")
-        plt.ylabel("Classification Accuracy")
-        plt.scatter(train_x.reshape(-1, 1), train_y, marker=".")
-        plt.plot(train_x.reshape(-1, 1), train_y_hat, "r")
-
-        plt.figure()
-        plt.title(f"Classification Accuracy vs {task_name} Accuracy ({model_name}) - Validation Dataset")
-        plt.xlabel(f"{task_name} Accuracy")
-        plt.ylabel("Classification Accuracy")
-        plt.scatter(val_x.reshape(-1, 1), val_y, marker=".")
-        plt.plot(val_x.reshape(-1, 1), val_y_hat, "r")
-
         plt.show()
+
+    plt.close("all")
+    return lr_train_rmse_loss_train, lr_val_rmse_loss_val, lr_train_rmse_loss_val, lr_train_r2_train, lr_val_r2_val, lr_train_r2_val

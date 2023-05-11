@@ -220,6 +220,6 @@ if __name__ == "__main__":
            train_y,
            val_x,
            val_y,
-           args.show_graphs,
            task_name.capitalize(),
-           args.model)
+           args.model,
+           show_graphs=args.show_graphs)

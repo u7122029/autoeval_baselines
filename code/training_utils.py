@@ -199,7 +199,7 @@ def test_model(test_dataloader, model, device, ss_batch_func=None):
             _, predicted = ss_out.max(1) if ss_batch_func else class_out.max(1)
             correct.append(predicted.eq(labels).cpu())
 
-    acc = torch.cat(correct).numpy().mean() * 100
+    acc = torch.cat(correct).numpy().mean() * 100.0
 
     print(f"{'self-supervised' if ss_batch_func else 'classification'} average: {acc:.4f}%")
 

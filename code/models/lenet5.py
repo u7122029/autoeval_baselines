@@ -11,7 +11,8 @@ class LeNet5_SS(Model, nn.Module):
         Model.__init__(self, num_ss_classes, "lenet5", "u7122029/pytorch-cifar10", "lenet5")
 
         # feature extraction backbone
-        self.feat = self.model[:-1]
+        self.feat1 = nn.Sequential(self.model.layer1, self.model.layer2)
+        self.feat2 = nn.Sequential(self.model.fc, self.model.relu, self.model.fc1, self.model.relu1)
 
         # classification FC layer
         self.fc = self.model.fc2
@@ -20,7 +21,10 @@ class LeNet5_SS(Model, nn.Module):
         self.fc_ss = nn.Linear(self.fc.in_features, self.num_ss_classes)
 
     def forward(self, x):
-        x = self.feat(x)
+        x = self.feat1(x)
+        x = x.reshape(x.size(0), -1)
+        x = self.feat2(x)
+
         out_class = self.fc(x)
         out_ss = self.fc_ss(x)
         return out_class, out_ss
