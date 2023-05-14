@@ -33,7 +33,7 @@ valid_models = [
     "densenet161",  # rotation, jigsaw done
     "densenet169",  # rotation, jigsaw done
     "shufflenet",  # rotation, jigsaw done
-    "inceptionv3",  # rotation, jigsaw done
+    "inception_v3",  # rotation, jigsaw done
     "linear",  # rotation, jigsaw done
     "alexnet",  # rotation, jigsaw done
     "lenet5",  # rotation, jigsaw done
@@ -92,7 +92,7 @@ def predict_multiple(model, imgs):
     # NOTE: make sure model is in validation mode
     model.eval()
     with torch.no_grad():
-        prob, _ = model(imgs)  # TODO: edit the models for other baselines.
+        prob, _ = model(imgs)
         pred = prob.argmax(dim=1, keepdim=True)
     return pred, torch.nn.functional.softmax(prob, dim=1).cpu().numpy()
 

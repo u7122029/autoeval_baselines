@@ -234,14 +234,15 @@ where
 The *Jigsaw Prediction* (Jigsaw) metric is defined as
 
 ```math
-\text{Jigsaw} = \frac{1}{m}\sum_{j=1}^m\Big\{\frac{1}{4}\sum_{r \in \{0^\circ, 90^\circ, 180^\circ, 270^\circ\}}\mathbf{1}\{C^r(\tilde{x}_j; \hat{\theta}) \neq y_r\}\Big\},
+\text{Jigsaw} = \frac{1}{m}\sum_{j = 1}^m\left(\frac{1}{g!}\sum_{p \in [1,g!] \cap \mathbb{N}}\mathbf{1}_{\{x | C^p(x;\hat{\theta}) \neq y_p\}}(\tilde{x}_j)\right)
 ```
 
 where
 
 - $m$ is the number of images,
-- $y_r$ is the label for $r \in \lbrace 0^{\circ}, 90^{\circ}, 180^{\circ}, 270^{\circ} \rbrace$,
-- $C^r(\tilde{x}_j; \hat{\theta})$ predicts the rotation degree of an image $\tilde{x}_j$.
+- $g$ is the length and width of the jigsaw puzzle grid,
+- $y_r$ is the label for $r \in [1,g!] \cap \mathbb{N}$,
+- $C^p(\tilde{x}_j; \hat{\theta})$ predicts the permutation index of a jigsaw image $\tilde{x}_j$.
 
 ## Results
 

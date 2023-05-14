@@ -85,7 +85,7 @@ def get_model(name, task, num_ss_classes, device, load_best_fc=True):
         model = DenseNet_SS(version, num_ss_classes)
     elif name == "shufflenet":
         model = ShuffleNet_SS(num_ss_classes)
-    elif name == "inceptionv3":
+    elif name == "inception_v3":
         model = Inceptionv3_SS(num_ss_classes)
     elif name == "linear":
         model = Linear_SS(num_ss_classes)

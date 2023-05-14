@@ -94,6 +94,12 @@ parser.add_argument(
     default=False,
     help='True if the graphs of classification accuracy vs jigsaw accuracy should be shown after RMSE calculation'
 )
+parser.add_argument(
+    '--reevaluate-domains',
+    action="store_true",
+    default=False,
+    help='True if the model should be reevaluated on the interior and exterior domain datasets.'
+)
 
 
 # Assumes (n_channels, rows, cols)
@@ -150,8 +156,22 @@ def jigsaw_batch_with_labels(batch, labels, int_to_perm):
     return torch.cat(images)
 
 
-def jigsaw_batch(batch, num_permutations, int_to_perm):
-    labels = torch.randint(num_permutations, (len(batch),), dtype=torch.long)
+def jigsaw_batch(batch, num_permutations, int_to_perm, random=True):
+    """
+    :param batch: The batch
+    :param num_permutations: The number of jigsaw permutations
+    :param int_to_perm: The permutation index to the actual permutation tuple.
+    :param random: True, if the permutation assigned to each image should be random, and False if there should be
+    ``num_permutations`` copies of each image associated with each possible permutation.
+    :return: The batch of jigsaw labels and the labels themselves.
+    """
+    if random:
+        labels = torch.randint(num_permutations, (len(batch),), dtype=torch.long)
+    else:
+        labels = torch.cat(
+            [torch.zeros(len(batch), dtype=torch.long) + label_idx for label_idx in range(num_permutations)]
+        )
+        batch = batch.repeat((num_permutations, 1, 1, 1))
     return jigsaw_batch_with_labels(batch, labels, int_to_perm), labels
 
 
@@ -159,7 +179,7 @@ def jigsaw_pred(dataloader, model, device, num_permutations, int_to_perm):
     # return a tuple of (classification accuracy, rotation prediction accuracy)
     outcomes = []
     for imgs, _ in iter(dataloader):
-        imgs_jig, labels_jig = jigsaw_batch(imgs, num_permutations, int_to_perm)
+        imgs_jig, labels_jig = jigsaw_batch(imgs, num_permutations, int_to_perm, random=False)
         imgs_jig, labels_jig = imgs_jig.to(device), labels_jig.to(device)
         with torch.no_grad():
             _, out_jig = model(imgs_jig)
@@ -220,10 +240,10 @@ if __name__ == "__main__":
         os.makedirs(temp_file_path)
 
     ss_predictor_func = lambda dataloader: jigsaw_pred(dataloader, model, device, num_permutations, int_to_perm)
-    if args.train_ss_layer or not os.path.exists(f"{temp_file_path}{train_set}.npy"):
+    if args.train_ss_layer or args.reevaluate_domains or not os.path.exists(f"{temp_file_path}{train_set}.npy"):
         eval_train(dataset_path, temp_file_path, train_set, TRANSFORM, args.batch_size, ss_predictor_func)
 
-    if args.train_ss_layer or not os.path.exists(f"{temp_file_path}val_sets.npy"):
+    if args.train_ss_layer or args.reevaluate_domains or not os.path.exists(f"{temp_file_path}val_sets.npy"):
         eval_validation(
             dataset_path,
             temp_file_path,

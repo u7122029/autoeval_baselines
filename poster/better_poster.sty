@@ -61,11 +61,11 @@
     \vspace*{-1.7cm} % get rid of random white space
     \noindent\makebox[\linewidth][c]{%
       \colorbox{\postertype}{%
-        \parbox[t][0.33\paperheight][c]{\paperwidth}{%
+        \parbox[t][0.27\paperheight][c]{\paperwidth}{%
           \hspace*{\dimexpr\hoffset+\oddsidemargin+1in\relax}%
           \begin{minipage}{\textwidth}
           \textcolor{white}
-            {\fontsize{29}{49} \selectfont
+            {\fontsize{23}{44} \selectfont
             \begin{flushleft}
                  \nohyphens{#1}
             \end{flushleft}
@@ -102,33 +102,6 @@
     }\par\medskip
 }
 
-% alternative footer
-\newcommand{\makealtfooter}[2]{
-    \vspace*{\fill}
-    \noindent\makebox[\linewidth][c]{%
-      \colorbox{\postertype}{%
-        \parbox[c][0.14\paperheight][c]{\paperwidth}{%
-          \hspace*{\dimexpr\hoffset+\oddsidemargin+1in\relax}%
-          \begin{minipage}[c][0.14\paperheight][c]{0.3\textwidth}
-            % your logo here
-            \includegraphics[height=0.11\paperheight, left]{#1}
-            \end{minipage}
-          \hfill
-          \begin{minipage}[c][0.14\paperheight][c]{0.4\textwidth}
-            \begin{flushright}
-                \textcolor{white}
-                {\large{
-                    Download the paper $\rightarrow$}
-                }
-                \end{flushright}
-          \end{minipage}
-          \begin{minipage}[c][0.14\paperheight][c]{0.2\textwidth}
-                \includegraphics[height=0.11\paperheight, left]{#2}
-          \end{minipage}
-        }%
-      }%
-    }\par\medskip
-}
 
 
 % makes main column
@@ -145,37 +118,21 @@
 
 \newcommand{\makemain}[1]{
     \noindent
-    \begin{minipage}[t]{0.7\linewidth}
+    \begin{minipage}[t]{0.73\linewidth}
         \maketitle
-        \large
+        \normalsize
             #1
         
     \end{minipage}
 }
 
-
-% makes additional figures column
-%\newcommand{\makeextracolumn}[1]{
-%    \hfill\begin{tikzpicture}[overlay]
-%    \draw[\postertype, very thick] (0,0.01\paperheight) -- (0,-0.56\paperheight);
-%    \end{tikzpicture}
-%    \hfill
-%    \parbox[t][0.5\paperheight][t]{0.3\linewidth}{
-%        \section*{Extra figures}
-%        
-%        {\scriptsize
-%        #1
-%        }
-%    }
-%}
-
 % makes additional figures column
 \newcommand{\makeextracolumn}[1]{
     \hfill\begin{tikzpicture}[overlay]
-    \draw[\postertype, very thick] (0,0.01\paperheight) -- (0,-0.56\paperheight);
+    \draw[\postertype, very thick] (0,0.01\paperheight) -- (0,-0.66\paperheight);
     \end{tikzpicture}
     \hfill
-    \begin{minipage}[t]{0.25\linewidth}
+    \begin{minipage}[t]{0.22\linewidth}
       \vspace*{0.514cm}
         \section*{Extra Figures}
         

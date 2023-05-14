@@ -3,7 +3,6 @@ import torch.nn.functional as F
 
 from models.model import Model
 
-
 class Inceptionv3_SS(Model, nn.Module):
     def __init__(self, num_ss_classes=4):
         nn.Module.__init__(self)
