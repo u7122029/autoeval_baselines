@@ -1,0 +1,16 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: u7122029/autoeval_baselines
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Callum
+    family-names: Koh
+    email: u7122029@anu.edu.au
+    affiliation: Australian National University
+repository-code: >-
+  https://github.com/u7122029/autoeval_baselines?organization=u7122029&organization=u7122029
