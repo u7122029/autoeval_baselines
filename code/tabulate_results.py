@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from tabulate import tabulate
 
-from training_utils import load_original_cifar_dataset
+from training_utils import load_original_cifar_dataset, get_model
 from utils import fit_lr, DEVICE, valid_models
 
 if __name__ == "__main__":
@@ -21,6 +21,7 @@ if __name__ == "__main__":
             "RMSE (Exterior Domain LR)": [],
             "R^2 (Exterior Domain w/ Interior Domain LR)": [],
             "RMSE (Exterior Domain w/ Interior Domain LR)": [],
+            "No. Parameters": []
         },
         "jigsaw": {
             "model": [],
@@ -30,9 +31,11 @@ if __name__ == "__main__":
             "RMSE (Exterior Domain LR)": [],
             "R^2 (Exterior Domain w/ Interior Domain LR)": [],
             "RMSE (Exterior Domain w/ Interior Domain LR)": [],
+            "No. Parameters": []
         }
     }
     for model_name in valid_models:
+        if model_name == "obc": continue
         for task_name in ["rotation", "jigsaw"]:
             train_x = np.load(f"{temp_file_path}/{model_name}/{task_name}/train_data.npy") * 100
             train_y = np.load(f"{temp_file_path}/{model_name}/acc/train_data.npy") * 100
@@ -45,7 +48,7 @@ if __name__ == "__main__":
                 lr_internal_r2_internal, \
                 lr_external_r2_external, \
                 lr_internal_r2_external = \
-                fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, save_graphs_dir=temp_file_path)
+                fit_lr(train_x, train_y, val_x, val_y, task_name, model_name) #save_graphs_dir=temp_file_path)
 
             df_dict[task_name]["model"].append(model_name)
             df_dict[task_name]["R^2 (Interior Domain LR)"].append(lr_internal_r2_internal)
@@ -55,22 +58,29 @@ if __name__ == "__main__":
             df_dict[task_name]["R^2 (Exterior Domain w/ Interior Domain LR)"].append(lr_internal_r2_external)
             df_dict[task_name]["RMSE (Exterior Domain w/ Interior Domain LR)"].append(lr_internal_rmse_external)
 
+            parameters = list(get_model(model_name,task_name,4,"cpu",load_best_fc=False).model.parameters())
+            df_dict[task_name]["No. Parameters"].append(len(parameters))
+
     rotation_df_full = pd.DataFrame(df_dict["rotation"]).round(4)
-    rotation_df_interior = rotation_df_full[["model", "R^2 (Interior Domain LR)", "RMSE (Interior Domain LR)"]] \
+    rotation_df_interior = rotation_df_full[
+        ["model", "R^2 (Interior Domain LR)", "RMSE (Interior Domain LR)", "No. Parameters"]] \
         .sort_values("R^2 (Interior Domain LR)", ascending=False)
-    rotation_df_exterior = rotation_df_full[["model", "R^2 (Exterior Domain LR)", "RMSE (Exterior Domain LR)"]] \
+    rotation_df_exterior = rotation_df_full[
+        ["model", "R^2 (Exterior Domain LR)", "RMSE (Exterior Domain LR)", "No. Parameters"]] \
         .sort_values("R^2 (Exterior Domain LR)", ascending=False)
     rotation_df_exterior_w_interior = rotation_df_full[
-        ["model", "R^2 (Exterior Domain w/ Interior Domain LR)", "RMSE (Exterior Domain w/ Interior Domain LR)"]] \
+        ["model", "R^2 (Exterior Domain w/ Interior Domain LR)", "RMSE (Exterior Domain w/ Interior Domain LR)", "No. Parameters"]] \
         .sort_values("R^2 (Exterior Domain w/ Interior Domain LR)", ascending=False)
 
     jigsaw_df_full = pd.DataFrame(df_dict["jigsaw"]).round(4)
-    jigsaw_df_interior = jigsaw_df_full[["model", "R^2 (Interior Domain LR)", "RMSE (Interior Domain LR)"]] \
+    jigsaw_df_interior = jigsaw_df_full[
+        ["model", "R^2 (Interior Domain LR)", "RMSE (Interior Domain LR)", "No. Parameters"]] \
         .sort_values("R^2 (Interior Domain LR)", ascending=False)
-    jigsaw_df_exterior = jigsaw_df_full[["model", "R^2 (Exterior Domain LR)", "RMSE (Exterior Domain LR)"]] \
+    jigsaw_df_exterior = jigsaw_df_full[
+        ["model", "R^2 (Exterior Domain LR)", "RMSE (Exterior Domain LR)", "No. Parameters"]] \
         .sort_values("R^2 (Exterior Domain LR)", ascending=False)
     jigsaw_df_exterior_w_interior = jigsaw_df_full[
-        ["model", "R^2 (Exterior Domain w/ Interior Domain LR)", "RMSE (Exterior Domain w/ Interior Domain LR)"]] \
+        ["model", "R^2 (Exterior Domain w/ Interior Domain LR)", "RMSE (Exterior Domain w/ Interior Domain LR)", "No. Parameters"]] \
         .sort_values("R^2 (Exterior Domain w/ Interior Domain LR)", ascending=False)
 
     # Store tabulated versions of dataframes.
