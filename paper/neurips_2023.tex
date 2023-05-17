@@ -1,0 +1,434 @@
+\documentclass{article}
+
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2023
+
+
+% ready for submission
+\usepackage[final]{neurips_2023}
+
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2023}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2023}
+
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2023}
+
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsmath, amssymb, amsthm, amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+
+\title{Is the Linear Correlation Between Classification and Rotation/Jigsaw Prediction Model-Invariant?}
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{%
+  Callum Koh\thanks{} \\
+  College of Engineering, Computing and Cybernetics\\
+  Australian National University\\
+  Canberra ACT 2601, Australia \\
+  \texttt{u7122029@anu.edu.au} \\
+  % examples of more authors
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \AND
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+}
+
+
+\begin{document}
+
+
+\maketitle
+
+
+\begin{abstract}
+We verify the linear relationship between classification accuracy (classification) and rotation prediction (rotation)/jigsaw solving (jigsaw) accuracy over the CIFAR-10 dataset and numerous classifiers. All classifiers tested (except one) for classification vs rotation displayed medium to strong linear correlations over directly modified versions of the CIFAR-10 dataset ($R^2 > 0.71$). For classification vs jigsaw over the same collection of datasets and classifiers, the linear correlation was weaker but still clear ($R^2 > 0.61$). Our results suggest that it is possible to estimate a classifier's performance over images outside its training and validation data without needing to add labels - which is a laborious task. Instead, we can evaluate the classifier over a self-supervised task, which will in turn correlate to its classification accuracy to a certain degree of precision.
+\end{abstract}
+
+\section{Introduction}
+Generally, image classification models are extensively trained to achive optimal accuracy on a training dataset and a validation dataset \cite{dridi2021supervised, nasteski2017overview}. Both datasets only cover a small subset of all possible scenarios encounterable in the real world \cite{gopalan2011domain}. This means that no matter how optimally a model for recognising road edges is trained for any imaginable scenario, there will eventually come a case where it will perform poorly. It is hence imperative that classifier performance be closely monitored when used in real-world situations. Unfortunately, the images fed into a model outside the training environment are unlabeled. So it is impossible to meausre model accuracy without manually adding labels to each image - which is a repetitive, time-consuming task. However, it has been previously shown that a classifier's accuracy can be estimated through its performance on rotation prediction and jigsaw solving \cite{Deng:ICML2021}. Current findings have observed this correlation for some datasets such as CIFAR-10 \cite{krizhevsky2009learning}, ImageNet \cite{deng2009imagenet}, COCO \cite{cocodataset} and MNIST \cite{deng2012mnist}, but each only had one classifier each to show it. Our work keeps the dataset fixed to CIFAR-10, and we use many different classifiers of varying complexity to check if the linear correlation of classification vs rotation and classification vs jigsaw are maintained across all of them.
+
+\section{Related Work}
+\paragraph{Image Classification} involves the prediction of the contents of an image. It is a core task that allows - among many other things - self-driving cars to travel safely \cite{du2019self, kulkarni2018traffic, kuehnle1998winter}, quality control machines to flag defective products \cite{kunkel2020quality}, specialised computers to read even the messiest handwritten addresses on envelopes \cite{gilloux1993research}, and hospital devices to recognise various lung diseases through x-rays \cite{abbas2021classification, wang2017chestx}. It is difficult to deny that over the last 20 years, research in this field has rapidly grown due to its wide range of applications and its potential to mimic human accuracy in this field \cite{singh2020image}.
+
+\paragraph{Rotation Prediction.} This is a task where a model must predict the canonical orientation of an image \cite{8932427}. It can help with determining the slant of a surface from an image \cite{413886}, stabilising shaky footage from a video recording or livestream \cite{fischer2015image}, determining the image transformations applied to an image \cite{gidaris2018unsupervised}, and many more applications. In the past, the canonical orientation was handled over a discrete set of possible rotations, such as $0^\circ$, $90^\circ$, $180^\circ$ and $270^\circ$ when determining the upright appearance of a scanned document \cite{fischer2015image}. Today, canonical orientations can be determined over the interval $[0^\circ, 360^\circ)$ of rotational angles \cite{fischer2015image, 8932427}.
+
+\paragraph{Jigsaw Solving.} This is a task where a model must predict the canonical arrangement of an image that has been divided into an $n$ by $n$ grid of equally-sized portions and positionally shuffled. Some works have trained models on image classification alongside jigsaw solving to improve its performance on data outside the training environment \cite{noroozi2016unsupervised}. By combining the losses together for backpropagation, the jigsaw task can be loosely viewed as a form of regularisation to avoid overfitting. Training models to solve jigsaw puzzles has also been a strategy for performing object reconstruction, which is useful for archeologists \cite{8451094}.
+
+\section{Method}
+\subsection{Definitions} 
+Let $D_\text{src}^{(i)} = \{(X_{\text{src}, k}^{(i)}, y_{\text{sre}, k}^{(i)})\}_{k = 1}^{n_i}$ be the $i$-th dataset from a particular source src, where $n_i$ is the number of images, $X_{\text{src}, k}^{(i)}$ is the $k$-th image from the dataset, and $y_{\text{sre}, k}^{(i)}$ is the corresponding label. If there is only one dataset from the given source, the $(i)$ will be omitted. For example, there is only one training dataset $D_\text{train}$ and one testing dataset $D_\text{test}$ in CIFAR-10.
+
+Now let $C_\text{sre} = \{D_{\text{sre}}^{(i)}\}^{m_\text{src}}_{i = 1}$ be a collection of $m_\text{src} \in \mathbb{N}$ datasets from a particular source. We call this set a domain, and in our work we consider the interior domain $C_\text{int}$ and the exterior domain $C_\text{ext}$. The interior domain refers to the datasets that are obtained through a series of image transformations applied to all images \textit{inside} $D_\text{test}$. The exterior domain refers to datasets constructed using images \textit{outside} $D_\text{train}$ and $D_\text{test}$. The images constructing these datasets can be obtained through Google Image Search, Instagram, or other places. They can also be obtained through image transformations of these pictures.
+
+\subsection{Estimating Classifier Accuracy}
+From here, our aim is to take a pretrained image classification model $M$ and test its performance on classifying images, jigsaw solving and rotation prediction over $C_\text{int}$ and $C_\text{ext}$. To do so we divide $M$ into two mutually exclusive parts: the classification layer $CL$ which is usually the last fully connected layer in $M$, and the feature extraction layers $FE$ - everything else in $M$. We then perform the following steps:
+\begin{enumerate}
+  \item Keep the weights and biases of $FE$ and $CL$ constant.
+  \item Introduce a new fully connected layer $SSL$ for a self-supervised task that has the same dimensions as $CL$ but with output size matching the requirements of the self-supervised task. This layer will take the output of $FE$ as input.
+  \item Train $M$ on the self-supervised task using data from $D_\text{train}$ and $D_\text{test}$, using the output of $SSL$ to evaluate performance.
+  \item Evaluate the classification accuracy of $M$ over $C_\text{int}$ using the output of $CL$,
+  \item Evaluate the accuracy of $M$ on the self-supervised task over $C_\text{int}$ using the output of $SSL$,
+  \item Repeat steps 4 and 5 using $C_\text{ext}$ instead,
+  \item Make a scatter plot of classification accuracy vs self-supervised task accuracy over $C_\text{int}$,
+  \item Fit a linear regression model to the scatter plot,
+  \item Repeat the previous step with $C_\text{ext}$.
+  \item Repeat all steps in order for another classifier.
+\end{enumerate}
+Here, the words "self-supervised task" refer to either rotation prediction or jigsaw solving.
+\paragraph{Quality of Linear Fit} For each classifier we evaluate the fit of the linear regression model on classification vs. rotation and classification vs. jigsaw using the Root Mean Square Error (RMSE) to determine the average deviation of each dataset from the line \cite{chai2014root}. We also use the Coefficient of Determination ($R^2$) to determine how much variation can be explained by the linear model \cite{nagelkerke1991note}.
+\subsection{Datasets}
+In our work, the interior domain $C_\text{int}$ contains 1000 datasets, each of which have modified images from $D_\text{test}$ via combinations of image transformations. The specifics are further described in \cite{deng2021labels}. 
+
+The exterior domain contains 40 datasets. One of these datasets was the CIFAR10.1 dataset \cite{recht2018cifar10.1, torralba2008tinyimages}, composed of 2000 images with the same labels as CIFAR-10 but are not part of CIFAR-10. Its original purpose was to understand the performance of classifiers trained on CIFAR-10 when given unseen data with the same labels. 19 datasets come from CIFAR-10.1-C \cite{hendrycks2019robustness}, each of which are modified versions of CIFAR-10.1 by applying a series of image transformations. The remaining 20 datasets are from CIFAR-10-F, which each contain images from the same distribution as CIFAR-10, but are from Flickr.
+
+\subsection{Self-Supervised Layer Training}
+Since all the image classification models we have chosen are pretrained, and their weights and biases are kept constant, we can say for sure that any loss function we use for this task will also remain constant. In turn, the accuracy of the model over a fixed dataset will remain unchanged over the training process. Consequently, we can ignore image classification loss. 
+
+\paragraph{Rotation Prediction} Let $f_\text{FE}$ be a function that applies the feature extraction layer of a model on an image, and $f_\text{R}$ be the function that applies the rotation prediction layer to a feature vector. If $\mathcal{L}_\text{CE}$ is the cross-entropy loss function, then the loss function for rotation prediction over a dataset $D_\text{src}$ can be written as
+\begin{equation}
+  \mathcal{L}_\text{R}(D_\text{src}) = \frac{1}{n_\text{src}}\sum_{k = 1}^{n_\text{src}} \mathcal{L}_\text{CE}(y_{\text{src}, k}, f_\text{R}(f_\text{FE}(X_{\text{src}, k})))
+\end{equation}
+ %When training the model on rotation prediction, we feed in an image $X_{\text{train}, k}$ from $D_\text{train}$ that has been rotated about its centre at an angle of $\theta \in \{0^\circ,180^\circ,270^\circ\}$ into the model by applying the feature extraction layer $f_\text{FE}$ to obtain the feature vector, then applying the rotation prediction function $f_\text{R}$ to obtain a . 
+
+\paragraph{Jigsaw Solving} We can write the loss function here in a similar manner, with $f_\text{J}$ being the function that applies the jigsaw prediction layer to a feature vector.
+\begin{equation}
+  \mathcal{L}_\text{J}(D_\text{src}) = \frac{1}{n_\text{src}}\sum_{k = 1}^{n_\text{src}} \mathcal{L}_\text{CE}(y_{\text{src}, k}, f_\text{J}(f_\text{FE}(X_{\text{src}, k})))
+\end{equation}
+
+For both tasks, we train each model for a maximum of 25 epochs over $D_\text{train}$ with learning rate 1e-2, weight decay 1e-4, and weight decay 1e-4. We save the model that achieved the highest self-supervised task accuracy on $D_\text{test}$ for evaluating the same task over $C_\text{int}$ and $C_\text{ext}$. All implementation details can be found in our GitHub repository \cite{Koh-u7122029-autoeval-baselines}.
+
+\subsection{Selected Classifiers}
+We train a total of 17 classifiers on rotation prediction and jigsaw solving, and we briefly introduce them here.
+\paragraph{ResNet} ResNet was developed by He et al. to address the vanishing gradient problem when deep neural networks were being trained on a given task \cite{DBLP:journals/corr/HeZRS15}. The architecture of ResNet has many forms, each of which are mostly dependent on the number of layers. ResNet-152 for instance contains 152 layers. In our work we use ResNet-20, ResNet-32, ResNet-44, ResNet-56 whose pretrained weights were obtained from \cite{Chen-pytorch-cifar-models}. We also use ResNet-110 and ResNet-1202, whose weights can be obtained from \cite{Koh-pytorch-resnet-cifar10} which is a forked repository of \cite{Idelbayev18a}.
+
+\paragraph{MobileNet\_v3} MobileNet\_v3 was developed to be accurate at classifying images while minimising power consumption and latency on mobile devices \cite{DBLP:journals/corr/abs-1905-02244}. We obtained the pretrained weights from \cite{Chen-pytorch-cifar-models}.
+
+\paragraph{Inception\_v3} Inception\_v3 was developed by Google and was designed to be a deep convolutional network while preventing the number of parameters from becoming too numerous \cite{DBLP:journals/corr/SzegedyVISW15}. It achieved a 79.8\% classification accuracy on the ImageNet dataset.
+
+\paragraph{RepVGG} RepVGG is a convolutional neural network that takes inspiration from VGG. Its architecture during training reminisces that of ResNet, but uses 1 by 1 branches during training only. During inference, the model only uses 3 by 3 convolutional layers and ReLU layers \cite{DBLP:journals/corr/abs-2101-03697}. It achieved over 80\% top-1 accuracy over the ImageNet dataset and is much more efficient than models such as ResNet-101.
+
+\paragraph{DenseNet} We used three versions of DenseNet, namely DenseNet-121, DenseNet-161 and DenseNet-169. DenseNet was designed with grouped layers called dense blocks, whose later layers take in features outputted from all previous layers. This addresses the vanishing gradient problem similarly to ResNet \cite{DBLP:journals/corr/HuangLW16a}.
+
+\paragraph{ShuffleNet} Is an extremely efficient convolutional neural network designed for use on mobile devices with computing speeds of 10 to 150 MFLOPS while achieving accuracies similar to that of AlexNet. Consequently, ShuffleNet runs around 13 times faster than AlexNet \cite{DBLP:journals/corr/ZhangZLS17}.
+
+\paragraph{AlexNet} Is a convolutional neural network proposed by Krizhevsky et al. that won the LSVRC competition in 2012 \cite{krizhevsky2017imagenet}. It was one of the first networks that inspired the use of convolutional layers in later models such as ResNet, however, its performance has evidently been well and truly surpassed by all the models mentioned earlier. From this point forward, the models we introduce will become less and less complex to approximately find the minimum model complexity required to show the aforementioned linear correlation.
+
+\paragraph{LeNet5} Is a convolutional neural network proposed by LeCun et al in 1998 to recognise grayscale handwritten digits in the MNIST dataset. The model has been adapted to accept RGB images from the CIFAR-10 dataset.
+
+\paragraph{Linear Classification} This model has a feature extraction layer that flattens the image into a $(32\cdot 32 \cdot 3) \times 1$ vector before passing it into a fully connected layer which will determine the model's prediction. It essentially tries to fit a linear model to $D_\text{train}$ for all tasks even though we know fully well that the classes of each task is not linearly seperable. We are unsure if the name "Linear Classification" is the original name for this model.
+
+\paragraph{One Braincell Model (OBC)} This model takes an image, and takes the arithmetic mean of all pixel intensities of all channels to output a scalar. This scalar is then passed into the fully-connected layer which will output the model's prediction for the given task. We called this model the One Braincell (OBC) model due to the sheer simplicity of this model, how poorly we expected it to perform on all tasks, and how its feature extraction layer gives an analogous amount of data to the classification layer as what a single neuron in the brain gives to the prefrontal cortex. Just like the linear classification model, we are unsure if there have been other names attributed to this model.
+
+\section{Results}
+\subsection{Classification vs. Rotation Accuracy}
+\paragraph{Interior Domain} We observe that the $R^2$ score for all models in the interior domain (except for OBC, which we will discuss later) was over 0.71. Some models have a score as high as $0.97$. This means that for a fixed model, at least 71\% of the variation between classification accuracy and rotation accuracy can be explained by the line of best fit for this model. Consequently, there is a strong linear correlation between the two variables over the interior domain and for almost any model. The RMSE for all models is below 5.5 for all models except for inception\_v3. This could suggest that the model is either overfit or underfit for this task.
+
+\paragraph{Exterior Domain} We observe that for each model, the linear regression fit for the interior domain on the exterior domain is either weak - represented by $R^2 \in [0, 0.45]$ - or inappropriate - represented by $R^2 < 0$. This implies that it is not possible to predict classification accuracy with certainty from rotation prediction over the exterior domain in the same manner as the interior domain. On the other hand, if we fit a linear regression model to the exterior domain results for each classifier, we observe that the simplest models including LeNet5, Linear, OBC and ResNet had the lowest $R^2$ scores, however, we did not expect Inception\_v3, a model that has nearly twice the number of parameters as ResNet44 to score in the same range as this models. Every other model tested had medium to strong correlations, agreeing with the work of Deng et al. \cite{Deng:ICML2021}
+
+\subsection{Classification vs. Jigsaw Accuracy}\label{cvja}
+\paragraph{Interior Domain}
+\paragraph{Exterior Domain}
+
+\subsection{OBC}
+The One Braincell model consistently gave the lowest $R^2$ score on both domains, however, it is important to note the method at which we evaluated the model. For rotation prediction as an example, if, for any dataset in either domain, we copied each image 4 times (matching the number of output classes), rotated the first copy by $0^\circ$, the second by $90^\circ$, and so on up to the 4th copy, we notice that the model would output the same rotation class for all 4 of them. This is because by definition, the model takes the mean intensity of all channels over all pixels of an image. Rotating or making a jigsaw puzzle out of an image does not change this mean. Consequently, the model will not be able to differentiate between four rotated copies of the same image, nor $4! = 24$ permutations of any of the 2 by 2 jigsaw puzzles of said image. So for $n$ copies of the same image adapted to each of the output classes for a self-supervised task, the OBC model would have a consistent $1/n$ probability of predicting the correct class, regardless of its performance on image classification. For rotation prediction, this would be $1/4$. For jigsaw solving, this would be $1/24$. This is reflected in Figures [ref], which technically show a linear correlation between classification and either of the self-supervised tasks, however, this relationship is not very useful in estimating classifier accuracy. On the other hand, if we never copied any of the images and assigned each image a random class, the model would show no correlation between classification and the given self-supervised task. This is shown in figures [ref].
+
+\section{Conclusion}
+
+\section{Future Work}
+\subsection{Enlargening the Exterior Domain}
+Our work only used 40 datasets in the exterior domain. This may not be enough to justify our evaluation of the unpredictable $R^2$ score attributed to some of the models. Currently, there are many more variants of CIFAR-10 in circulation such as CIFAR-10.2. We can also obtain even more datasets by applying image transformations on this dataset as well as CIFAR-10-F which was always in our exterior domain.
+
+\subsection{Testing More Models}
+There are many other models, and variants of models that can be tested. For example, VGG. There are other versions of Inception and MobileNet that we have not yet tested. We should also note that for every model, we kept hyperparameters constant as well as the number of epochs. This could have resulted in underfitting or overfitting for some of the models tested, and we hence need to fine-tune these parameters to avoid both cases.
+
+\subsection{Testing Other Self-Supervised Methods}
+Jigsaw solving and rotation prediction are merely the tip of the iceberg when considering the list of all known self-supervised tasks. Image colourisation for example, is another task we could test our models on. This not only helps verify if the correlation also holds for other tasks, but it also checks if the correlation is weaker when there are more output classes, as suggested from section \ref{cvja}.
+
+\subsection{Testing More Datasets}
+CIFAR-10 is only one dataset with 60,000 different 32 by 32 RGB images. This is tiny in comparison to ImageNet, which contains over 14 million 224 by 224 RGB images in total. This implies it would be extremely useful to see how well the proposed linear correlation holds up on a much larger dataset. 
+
+Aside from ImageNet, we could also test the models on datasets such as MNIST, KMNIST, FASHIONMNIST, COCO, and even more.
+
+\subsection{Retrieval of style files}
+
+The \LaTeX{} style file contains three optional arguments: \verb+final+, which
+creates a camera-ready copy, \verb+preprint+, which creates a preprint for
+submission to, e.g., arXiv, and \verb+nonatbib+, which will not load the
+\verb+natbib+ package for you in case of package clash.
+
+
+\paragraph{Preprint option}
+If you wish to post a preprint of your work online, e.g., on arXiv, using the
+NeurIPS style, please use the \verb+preprint+ option. This will create a
+nonanonymized version of your work with the text ``Preprint. Work in progress.''
+in the footer. This version may be distributed as you see fit, as long as you do not say which conference it was submitted to. Please \textbf{do
+  not} use the \verb+final+ option, which should \textbf{only} be used for
+papers accepted to NeurIPS. 
+
+
+\section{Citations, figures, tables, references}
+\label{others}
+
+
+These instructions apply to everyone.
+
+
+\subsection{Citations within the text}
+
+
+The \verb+natbib+ package will be loaded for you by default.  Citations may be
+author/year or numeric, as long as you maintain internal consistency.  As to the
+format of the references themselves, any style is acceptable as long as it is
+used consistently.
+
+
+The documentation for \verb+natbib+ may be found at
+\begin{center}
+  \url{http://mirrors.ctan.org/macros/latex/contrib/natbib/natnotes.pdf}
+\end{center}
+Of note is the command \verb+\citet+, which produces citations appropriate for
+use in inline text.  For example,
+\begin{verbatim}
+   \citet{hasselmo} investigated\dots
+\end{verbatim}
+produces
+\begin{quote}
+  Hasselmo, et al.\ (1995) investigated\dots
+\end{quote}
+
+
+If you wish to load the \verb+natbib+ package with options, you may add the
+following before loading the \verb+neurips_2023+ package:
+\begin{verbatim}
+   \PassOptionsToPackage{options}{natbib}
+\end{verbatim}
+
+
+If \verb+natbib+ clashes with another package you load, you can add the optional
+argument \verb+nonatbib+ when loading the style file:
+\begin{verbatim}
+   \usepackage[nonatbib]{neurips_2023}
+\end{verbatim}
+
+
+As submission is double blind, refer to your own published work in the third
+person. That is, use ``In the previous work of Jones et al.\ [4],'' not ``In our
+previous work [4].'' If you cite your other papers that are not widely available
+(e.g., a journal paper under review), use anonymous author names in the
+citation, e.g., an author of the form ``A.\ Anonymous'' and include a copy of the anonymized paper in the supplementary material.
+
+
+
+\subsection{Figures}
+
+
+\begin{figure}
+  \centering
+  \fbox{\rule[-.5cm]{0cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
+  \caption{Sample figure caption.}
+\end{figure}
+
+
+All artwork must be neat, clean, and legible. Lines should be dark enough for
+purposes of reproduction. The figure number and caption always appear after the
+figure. Place one line space before the figure caption and one line space after
+the figure. The figure caption should be lower case (except for first word and
+proper nouns); figures are numbered consecutively.
+
+
+You may use color figures.  However, it is best for the figure captions and the
+paper body to be legible if the paper is printed in either black/white or in
+color.
+
+
+\subsection{Tables}
+
+
+All tables must be centered, neat, clean and legible.  The table number and
+title always appear before the table.  See Table~\ref{sample-table}.
+
+
+Place one line space before the table title, one line space after the
+table title, and one line space after the table. The table title must
+be lower case (except for first word and proper nouns); tables are
+numbered consecutively.
+
+
+Note that publication-quality tables \emph{do not contain vertical rules.} We
+strongly suggest the use of the \verb+booktabs+ package, which allows for
+typesetting high-quality, professional tables:
+\begin{center}
+  \url{https://www.ctan.org/pkg/booktabs}
+\end{center}
+This package was used to typeset Table~\ref{sample-table}.
+
+
+\begin{table}
+  \caption{Sample table title}
+  \label{sample-table}
+  \centering
+  \begin{tabular}{lll}
+    \toprule
+    \multicolumn{2}{c}{Part}                   \\
+    \cmidrule(r){1-2}
+    Name     & Description     & Size ($\mu$m) \\
+    \midrule
+    Dendrite & Input terminal  & $\sim$100     \\
+    Axon     & Output terminal & $\sim$10      \\
+    Soma     & Cell body       & up to $10^6$  \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Math}
+Note that display math in bare TeX commands will not create correct line numbers for submission. Please use LaTeX (or AMSTeX) commands for unnumbered display math. (You really shouldn't be using \$\$ anyway; see \url{https://tex.stackexchange.com/questions/503/why-is-preferable-to} and \url{https://tex.stackexchange.com/questions/40492/what-are-the-differences-between-align-equation-and-displaymath} for more information.)
+
+\subsection{Final instructions}
+
+Do not change any aspects of the formatting parameters in the style files.  In
+particular, do not modify the width or length of the rectangle the text should
+fit into, and do not change font sizes (except perhaps in the
+\textbf{References} section; see below). Please note that pages should be
+numbered.
+
+
+\section{Preparing PDF files}
+
+
+Please prepare submission files with paper size ``US Letter,'' and not, for
+example, ``A4.''
+
+
+Fonts were the main cause of problems in the past years. Your PDF file must only
+contain Type 1 or Embedded TrueType fonts. Here are a few instructions to
+achieve this.
+
+
+\begin{itemize}
+
+
+\item You should directly generate PDF files using \verb+pdflatex+.
+
+
+\item You can check which fonts a PDF files uses.  In Acrobat Reader, select the
+  menu Files$>$Document Properties$>$Fonts and select Show All Fonts. You can
+  also use the program \verb+pdffonts+ which comes with \verb+xpdf+ and is
+  available out-of-the-box on most Linux machines.
+
+
+\item \verb+xfig+ "patterned" shapes are implemented with bitmap fonts.  Use
+  "solid" shapes instead.
+
+
+\item The \verb+\bbold+ package almost always uses bitmap fonts.  You should use
+  the equivalent AMS Fonts:
+\begin{verbatim}
+   \usepackage{amsfonts}
+\end{verbatim}
+followed by, e.g., \verb+\mathbb{R}+, \verb+\mathbb{N}+, or \verb+\mathbb{C}+
+for $\mathbb{R}$, $\mathbb{N}$ or $\mathbb{C}$.  You can also use the following
+workaround for reals, natural and complex:
+\begin{verbatim}
+   \newcommand{\RR}{I\!\!R} %real numbers
+   \newcommand{\Nat}{I\!\!N} %natural numbers
+   \newcommand{\CC}{I\!\!\!\!C} %complex numbers
+\end{verbatim}
+Note that \verb+amsfonts+ is automatically loaded by the \verb+amssymb+ package.
+
+
+\end{itemize}
+
+
+If your file contains type 3 fonts or non embedded TrueType fonts, we will ask
+you to fix it.
+
+
+\subsection{Margins in \LaTeX{}}
+
+
+Most of the margin problems come from figures positioned by hand using
+\verb+\special+ or other commands. We suggest using the command
+\verb+\includegraphics+ from the \verb+graphicx+ package. Always specify the
+figure width as a multiple of the line width as in the example below:
+\begin{verbatim}
+   \usepackage[pdftex]{graphicx} ...
+   \includegraphics[width=0.8\linewidth]{myfile.pdf}
+\end{verbatim}
+See Section 4.4 in the graphics bundle documentation
+(\url{http://mirrors.ctan.org/macros/latex/required/graphics/grfguide.pdf})
+
+
+A number of width problems arise when \LaTeX{} cannot properly hyphenate a
+line. Please give LaTeX hyphenation hints using the \verb+\-+ command when
+necessary.
+
+
+\begin{ack}
+No funding was received from any third party to carry out this work.
+\end{ack}
+
+
+
+\section{Supplementary Material}
+
+Authors may wish to optionally include extra information (complete proofs, additional experiments and plots) in the appendix. All such materials should be part of the supplemental material (submitted separately) and should NOT be included in the main submission.
+
+
+\section*{References}
+
+Note that the Reference section does not count towards the page limit.
+\medskip
+
+\bibliographystyle{IEEEtranS}
+{
+\small
+
+
+\bibliography{references.bib}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\end{document}
