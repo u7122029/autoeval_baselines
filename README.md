@@ -23,14 +23,7 @@ This is a fork of [the 1st DataCV Challenge](https://sites.google.com/view/vdu-c
 
 ## Abstract
 
-We verify that the linear correlation between classification accuracy and self-supervision accuracy for rotation
-prediction and jigsaw classification holds between various computer vision neural network models over the CIFAR-10
-dataset. We observed that there is a medium to strong linear correlation between classification accuracy and both
-self-supervised tasks over both interior (the collection of datasets
-derived from the original CIFAR-10 dataset through image transformations) and exterior (the collection of datasets 
-sharing labels with the original CIFAR-10 dataset, but containing images not included in the latter) dataset domains.
-This suggests that it is not necessary to generate human-made labels for a supervised task since we can gauge model 
-performance on said task through its performance on a self-supervised one.
+We verify the linear relationship between image classification accuracy (classification) and rotation prediction (rotation) over the CIFAR-10 dataset and its variants. This extends previous work where the same correlation was observed over numerous datasets but one fixed classifier. We also verify the linear correlation for classification and jigsaw solving accuracy (jigsaw) over the same dataset. For both comparisons, all models (except one) showed a strong correlation over datasets constructed by directly using image transformations ($R^2 > 0.71$ for classification vs. rotation, $R^2 > 0.61$ for classification vs. jigsaw). However, some models showed a weak linear correlation between classification and rotation/jigsaw accuracy on images outside of CIFAR-10. This suggests that estimating a model's classification accuracy based on rotation/jigsaw accuracy depends on the model itself, however, this must be investigated further.
 
 ## Overview
 
@@ -53,34 +46,6 @@ hence the name "self-supervision". If there is a correlation, we can then judge 
 given its performance on a self-supervised task. In a broader sense, it will be much easier to verify if a given
 supervised task can have a model fitted to it with sufficiently high performance - all before any time or human
 resources are spent generating labels.
-
-### Related Work
-
-#### Image Classification - Self-Supervised Task Performance
-
-Aside from the work that this repository was forked from [ref], our work also focuses on the findings of [ref] which
-observed a strong linear correlation between a model's performance on image classification and rotation prediction over
-MNIST, CIFAR10 and ImageNet, where for each dataset, different models were used. Our work keeps the dataset (i.e:
-CIFAR-10) fixed, and we test various models on this dataset to verify that the linear correlation between classification
-accuracy and rotation prediction accuracy is preserved. In the future work section of the same paper, the writers also
-remark that there is a strong linear correlation between classification accuracy and jigsaw classification accuracy. We
-verify this finding in our work as well.
-
-#### CIFAR-10 Dataset
-
-#### ResNet
-
-#### DenseNet
-
-#### MobileNetv2
-
-#### ShuffleNet
-
-#### RepVGG
-
-#### Image Classification
-
-#### Self-Supervised Tasks
 
 ## Datasets
 
@@ -389,3 +354,4 @@ All tables are sorted in descending order by $R^2$ coefficient.
 | linear      | -2.2482                         | 6.7766                           |                2 |
 | densenet161 | -3.0118                         | 17.4833                          |              484 |
 | obc         | -5.138                          | 4.5813                           |                2 |
+
