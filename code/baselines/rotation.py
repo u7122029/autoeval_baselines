@@ -80,6 +80,18 @@ parser.add_argument(
     default=False,
     help='True if the graphs of classification accuracy vs jigsaw accuracy should be shown after RMSE calculation'
 )
+parser.add_argument(
+    '--use-rand-labels-eval',
+    action="store_true",
+    default=False,
+    help='True if the self-supervision labels during evaluation on the interior and exterior domains should be completely randomised.'
+)
+parser.add_argument(
+    '--reevaluate-domains',
+    action="store_true",
+    default=False,
+    help='True if the model should be reevaluated on the interior and exterior domain datasets.'
+)
 
 
 # Assumes that tensor is (nchannels, height, width)
@@ -127,11 +139,11 @@ def rotate_batch(batch, label):
     return rotate_batch_with_labels(batch, labels), labels
 
 
-def rotation_pred(dataloader, model, device):
+def rotation_pred(dataloader, model, device, label_method="expand"):
     # return a tuple of (classification accuracy, rotation prediction accuracy)
     correct_rot = []
     for imgs, _ in iter(dataloader):
-        imgs_rot, labels_rot = rotate_batch(imgs, "expand")
+        imgs_rot, labels_rot = rotate_batch(imgs, label_method)
         imgs_rot, labels_rot = imgs_rot.to(device), labels_rot.to(device)
         with torch.no_grad():
             _, out_rot = model(imgs_rot)
@@ -191,11 +203,14 @@ if __name__ == "__main__":
     if not os.path.exists(temp_file_path):
         os.makedirs(temp_file_path)
 
-    ss_predictor_func = lambda dataloader: rotation_pred(dataloader, model, device)
-    if args.train_ss_layer or not os.path.exists(f"{temp_file_path}{train_set}.npy"):
+
+    label_method = "rand" if args.use_rand_labels_eval else "expand"
+    ss_predictor_func = lambda dataloader: rotation_pred(dataloader, model, device,
+                                                         label_method=label_method)
+    if args.reevaluate_domains or args.train_ss_layer or not os.path.exists(f"{temp_file_path}{train_set}.npy"):
         eval_train(dataset_path, temp_file_path, train_set, TRANSFORM, args.batch_size, ss_predictor_func)
 
-    if args.train_ss_layer or not os.path.exists(f"{temp_file_path}val_sets.npy"):
+    if args.reevaluate_domains or args.train_ss_layer or not os.path.exists(f"{temp_file_path}val_sets.npy"):
         eval_validation(
             dataset_path,
             temp_file_path,
