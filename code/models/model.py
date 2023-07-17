@@ -1,4 +1,5 @@
 # Abstract model class
+import os
 from abc import ABC
 
 import torch
@@ -23,14 +24,23 @@ class Model(ABC, nn.Module):
     def load_ss_fc(self, link, is_local=False):
         # Load the weights of the self-supervised fc layer.
         if is_local:
-            pretrained_state_dict = torch.load(link, map_location="cpu")
-        else:
-            pretrained_state_dict = torch.hub.load_state_dict_from_url(link, map_location="cpu")
+            self.fc_ss.load_state_dict(torch.load(link, map_location="cpu"))
+            return
+        self.fc_ss.load_state_dict(torch.hub.load_state_dict_from_url(link, map_location="cpu"))
 
-        our_state_dict = self.state_dict()
-        if "fc_ss.1.weight" in pretrained_state_dict:
-            our_state_dict["fc_ss.1.weight"] = pretrained_state_dict["fc_ss.1.weight"]
-            our_state_dict["fc_ss.1.bias"] = pretrained_state_dict["fc_ss.1.bias"]
-        else:
-            our_state_dict["fc_ss.weight"] = pretrained_state_dict["fc_ss.weight"]
-            our_state_dict["fc_ss.bias"] = pretrained_state_dict["fc_ss.bias"]
+    def save_ss_fc(self, out_dir, filename):
+        """
+        Saves the state dictionary of the self-supervised fully connected layer to the given output directory.
+        :param out_dir: The output directory.
+        :param filename: The name of the output file.
+        :return: True if the state dict was successfully saved, and false otherwise.
+        """
+        if not self.fc_ss:
+            return False
+
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+
+        fc_state_dict = self.fc_ss.state_dict()
+        torch.save(fc_state_dict, f"{out_dir}/{filename}")
+        return True

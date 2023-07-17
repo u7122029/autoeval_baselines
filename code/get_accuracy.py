@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
     model_name = args.model
     train_set = "train_data"
-    val_sets = sorted(["cifar10-f-32", "cifar-10.1-c", "cifar-10.1"])
+    val_sets = sorted(["cifar10-f-32", "cifar-10.1-c", "cifar-10.1", "cifar-10.2-train-sets", "cifar-10.2-val"])
     temp_file_path = f"../temp/{model_name}/acc/"
 
     batch_size = 500

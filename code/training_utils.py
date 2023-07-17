@@ -1,5 +1,6 @@
 import time
-
+import os
+import shutil
 import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn as nn
@@ -20,8 +21,7 @@ from models.resnet import ResNet_SS
 from models.shufflenet import ShuffleNet_SS
 from utils import (
     AverageMeter,
-    adjust_learning_rate,
-    save_checkpoint
+    adjust_learning_rate
 )
 
 
@@ -102,7 +102,7 @@ def get_model(name, task, num_ss_classes, device, load_best_fc=True):
 
     if load_best_fc:
         # If we are not training the self-supervision FC layer, we should try to load in its best checkpoint
-        model.load_ss_fc(f"../model_weights/{name}-{task}-fc.pt", is_local=True)
+        model.load_ss_fc(f"../model_weights/{name}/{task}/best.pt", is_local=True)
         model.eval()
 
     model.to(device)
@@ -163,7 +163,7 @@ def train_epoch(train_loader, ss_batch_func, model, device, criterion, optimizer
 
         if i % print_freq == 0:
             print(f"Epoch: [{epoch}][{i}/{len(train_loader)}]\t"
-                  f"Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t"
+                  f"Time {batch_time.val:.4f} ({batch_time.avg:.4f})\t"
                   # f"Loss_Total {losses.val:.4f} ({losses.avg:.4f})\t"
                   f"Loss_SSH {loss_ssh:.4f} (Running avg: {losses.avg:.4f})\t"
                   # f"Prec@1 {top1.val:.3f} ({top1.avg:.3f})"
@@ -205,6 +205,12 @@ def test_model(test_dataloader, model, device, ss_batch_func=None):
 
     return acc, losses
 
+def save_checkpoint(model, is_best, task_name):
+    """Saves checkpoint to disk"""
+    directory = f"../model_weights/{model.model_name}/{task_name}"
+    model.save_ss_fc(directory, "checkpoint.pt")
+    if is_best:
+        shutil.copyfile(f"{directory}/checkpoint.pt", f'{directory}/best.pt')
 
 def train_ss_fc(
         model,
@@ -283,9 +289,8 @@ def train_ss_fc(
         # best_class_acc = max(class_acc, best_class_acc)
         best_ss_acc = max(ss_acc, best_ss_acc)
         save_checkpoint(
-            model.state_dict(),  # We don't need the epoch number of the best ss_acc
+            model,
             is_best,
-            model.model_name,
             ss_task_name
         )
     print('Best self-supervised accuracy (test set):', best_ss_acc)

@@ -122,18 +122,6 @@ def construct_permutation_mappings(grid_length):
     return {k: {"perm": v, "inverse": inverse_permutation(v)} for k, v in enumerate(perms)}
 
 
-def save_checkpoint(state, is_best, model_name, task):
-    # TODO: Possibly shift this to the model class.
-    """Saves checkpoint to disk"""
-    directory = f"../model_weights/{model_name}/{task}"
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-    filename = f"{directory}/checkpoint.pt"
-    torch.save(state, filename)
-    if is_best:
-        shutil.copyfile(filename, f'../model_weights/{model_name}-{task}-fc.pt')
-
-
 def adjust_learning_rate(optimizer, epoch, lr):
     """Sets the learning rate to the initial LR decayed by 10 after 8 and 14 epochs"""
     lr = lr * (0.1 ** (epoch // 8)) * (0.1 ** (epoch // 14))

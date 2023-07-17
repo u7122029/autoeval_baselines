@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
     task_name = "rotation"
     train_set = "train_data"
-    val_sets = sorted(["cifar10-f-32", "cifar-10.1-c", "cifar-10.1"])
+    val_sets = sorted(["cifar10-f-32", "cifar-10.1-c", "cifar-10.1", "cifar-10.2-train-sets", "cifar-10.2-val"])
     temp_file_path = f"../temp/{model_name}/{task_name}/"
 
     # This function must only be run ONCE!!! Computing permutations is O(n!)
@@ -176,9 +176,9 @@ if __name__ == "__main__":
     # Get the model given the input parameters.
     model = get_model(model_name, task_name, 4, device, not args.train_ss_layer)
 
-    ss_batch_func = lambda inp_batch: rotate_batch(inp_batch, "rand")
     # Train the model if required
     if args.train_ss_layer:
+        ss_batch_func = lambda inp_batch: rotate_batch(inp_batch, "rand")
         train_loader, test_loader = load_original_cifar_dataset(
             device,
             args.batch_size,
