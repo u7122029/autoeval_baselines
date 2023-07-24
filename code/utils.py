@@ -11,6 +11,35 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from tabulate import tabulate
 
+### PATHS
+TEMP_PATH_DEFAULT = "../temp"
+WEIGHTS_PATH_DEFAULT = "../model_weights"
+DATA_PATH_DEFAULT = "data"
+TRAIN_DATA = "train_data"
+VAL_DATA = "val_data"
+DEFAULT_DATASET_COND = lambda root, dirs, files: "data.npy" in files and "labels.npy" in files
+"""VAL_SETS = sorted([
+    "cifar10-f-32",
+    "cifar-10.1-c",
+    "cifar-10.1",
+    "cifar-10.2-train-sets",
+    "cifar-10.2-val",
+    "cifar-10.2-val-c",
+    "cifar-10.2-train-c-1",
+    "cifar-10.2-train-c-2",
+    "cifar-10.2-train-c-3",
+    "cifar-10.2-train-c-4",
+    "cifar-10.2-train-c-5"] + [f"cifar10-f-32-c-{i}" for i in range(1,21)])"""
+
+### SS LAYER TRAINING
+BATCH_SIZE = 64
+JIGSAW_GRID_LENGTH = 2
+PRINT_FREQ = 100
+LEARN_RATE = 1e-2
+EPOCHS = 25
+MOMENTUM = 0.9
+WEIGHT_DECAY = 1e-4
+
 TRANSFORM = torchvision.transforms.Compose(
     [
         torchvision.transforms.ToTensor(),
@@ -20,7 +49,7 @@ TRANSFORM = torchvision.transforms.Compose(
     ]
 )
 
-valid_models = [
+VALID_MODELS = [
     "resnet20",  # rotation, jigsaw done
     "resnet32",  # rotation, jigsaw done
     "resnet44",  # rotation, jigsaw done
@@ -86,6 +115,17 @@ class CIFAR10NP(torch.utils.data.Dataset):
         return img, label
 
 
+def get_dirs(root, cond=None):
+    if not cond:
+        cond = lambda root, dir, files: True
+
+    out_dirs = set()
+    for root, dir, files in os.walk(root):
+        if cond(root, dir, files):
+            out_dirs.add(root)
+    return sorted(list(out_dirs))
+
+
 def predict_multiple(model, imgs):
     # assume multiple image inputs with shape (N, 3, 32, 32) where N is the batch size
     assert isinstance(imgs, torch.Tensor) and imgs.shape[1:] == (3, 32, 32)
@@ -130,7 +170,7 @@ def adjust_learning_rate(optimizer, epoch, lr):
 
 
 def accuracy(output, target, topk=(1,)):
-    """Computes the precision@k for the specified values of k"""
+    """Computes the precision@model for the specified values of model"""
     maxk = max(topk)
     batch_size = target.size(0)
 
@@ -175,16 +215,18 @@ def fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, show_graphs=Fa
     print(tabulate(grid, headers="firstrow", tablefmt="psql"))
 
     plt.figure()
-    plt.title(f"Classification Acc. vs {task_name} Acc. ({model_name}) - Interior Domain")
+    plt.title(f"Classification Acc. vs {task_name} Acc. ({model_name})")
     plt.xlabel(f"{task_name} Accuracy")
     plt.ylabel("Classification Accuracy")
-    plt.scatter(train_x.reshape(-1, 1), train_y, marker=".")
-    plt.plot(train_x.reshape(-1, 1), lr_train_train_y_hat, "r", label="Interior Domain Line")
+    plt.scatter(train_x.reshape(-1, 1), train_y, marker="+", linewidths=0.75, color="blue")
+    plt.scatter(val_x.reshape(-1, 1), val_y, marker="x", linewidths=0.5, color="red")
+    plt.plot(train_x.reshape(-1, 1), lr_train_train_y_hat, "b", label="Interior Domain")
+    plt.plot(val_x.reshape(-1, 1), lr_val_val_y_hat, "r", label="Exterior Domain")
     plt.legend(loc="best")
     if save_graphs_dir:
-        plt.savefig(f"{save_graphs_dir}/{model_name}/{task_name}/original_cifar10_corrupted.png", format="png")
+        plt.savefig(f"{save_graphs_dir}/graph.png", format="png")
 
-    plt.figure()
+    """plt.figure()
     plt.title(f"Classification Acc. vs {task_name} Acc. ({model_name}) - Exterior Domain")
     plt.xlabel(f"{task_name} Accuracy")
     plt.ylabel("Classification Accuracy")
@@ -193,10 +235,13 @@ def fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, show_graphs=Fa
     plt.plot(val_x.reshape(-1, 1), lr_val_val_y_hat, "g", label="Exterior Domain Line")
     plt.legend(loc="best")
     if save_graphs_dir:
-        plt.savefig(f"{save_graphs_dir}/{model_name}/{task_name}/other_cifar10_corrupted.png", format="png")
+        plt.savefig(f"{save_graphs_dir}/other_cifar10_corrupted.png", format="png")"""
 
     if show_graphs:
         plt.show()
 
     plt.close("all")
     return lr_train_rmse_loss_train, lr_val_rmse_loss_val, lr_train_rmse_loss_val, lr_train_r2_train, lr_val_r2_val, lr_train_r2_val
+
+if __name__ == "__main__":
+    print(len(get_dirs("data/val_data", DEFAULT_DATASET_COND)))

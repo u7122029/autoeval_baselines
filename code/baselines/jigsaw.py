@@ -20,7 +20,7 @@ from utils import (
     TRANSFORM,
     construct_permutation_mappings,
     fit_lr,
-    valid_models
+    VALID_MODELS
 )
 
 from training_utils import (
@@ -40,7 +40,7 @@ parser.add_argument(
     required=True,
     type=str,
     help="the model used to run this script",
-    choices=valid_models
+    choices=VALID_MODELS
 )
 parser.add_argument(
     "--dataset_path",

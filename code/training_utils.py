@@ -21,7 +21,13 @@ from models.resnet import ResNet_SS
 from models.shufflenet import ShuffleNet_SS
 from utils import (
     AverageMeter,
-    adjust_learning_rate
+    adjust_learning_rate,
+    EPOCHS,
+    MOMENTUM,
+    WEIGHT_DECAY,
+    LEARN_RATE,
+    PRINT_FREQ,
+    WEIGHTS_PATH_DEFAULT
 )
 
 
@@ -219,20 +225,30 @@ def train_ss_fc(
         test_loader,
         ss_batch_func,
         ss_task_name,
-        epochs=50,
-        learning_rate=1e-2,
-        momentum=0.9,
-        weight_decay=1e-4,
-        print_freq=100):
+        epochs=EPOCHS,
+        learning_rate=LEARN_RATE,
+        momentum=MOMENTUM,
+        weight_decay=WEIGHT_DECAY,
+        print_freq=PRINT_FREQ,
+        show_animation=True,
+        figure_save_dir=WEIGHTS_PATH_DEFAULT):
     # Set up figure for plotting losses per epoch
+
     figure = plt.figure()
     ax = figure.add_subplot(111)
     ax.set_title(f"Loss for each Epoch ({model.model_name})")
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
-    train_loss_plot, = ax.plot([], [], 'ro-', label="Train Loss")
-    val_loss_plot, = ax.plot([], [], "bx-", label="Val Loss")
-    ax.legend()
+    train_loss_x = []
+    train_loss_y = []
+    val_loss_x = []
+    val_loss_y = []
+
+    train_loss_plot = val_loss_plot = None
+    if show_animation:
+        train_loss_plot, = ax.plot(train_loss_x, train_loss_y, 'ro-', label="Train Loss")
+        val_loss_plot, = ax.plot(val_loss_x, val_loss_y, "bx-", label="Val Loss")
+        ax.legend()
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(),
@@ -261,7 +277,7 @@ def train_ss_fc(
         )
 
         # evaluate on test set for image classification.
-        # Class accuracy stays constant at 94.37%. So we don't need to calculate it.
+        # Class accuracy stays constant. So we don't need to calculate it.
         # class_acc = test_class(test_loader, model, device, args)
 
         # evaluate on test set for self-supervised prediction
@@ -273,16 +289,22 @@ def train_ss_fc(
         )
 
         # Update loss graph
-        train_loss_plot.set_xdata(np.append(train_loss_plot.get_xdata(), epoch))
-        train_loss_plot.set_ydata(np.append(train_loss_plot.get_ydata(), train_losses.avg))
+        train_loss_x.append(epoch)
+        train_loss_y.append(train_losses.avg)
 
-        val_loss_plot.set_xdata(np.append(val_loss_plot.get_xdata(), epoch))
-        val_loss_plot.set_ydata(np.append(val_loss_plot.get_ydata(), val_losses.avg))
+        val_loss_x.append(epoch)
+        val_loss_y.append(val_losses.avg)
+        if show_animation:
+            train_loss_plot.set_xdata(train_loss_x)
+            train_loss_plot.set_ydata(train_loss_y)
 
-        ax.relim()
-        ax.autoscale_view(True, True, True)
-        figure.canvas.draw()
-        figure.canvas.flush_events()
+            val_loss_plot.set_xdata(val_loss_x)
+            val_loss_plot.set_ydata(val_loss_y)
+
+            ax.relim()
+            ax.autoscale_view(True, True, True)
+            figure.canvas.draw()
+            figure.canvas.flush_events()
 
         # remember best prec@1 and save checkpoint
         is_best = ss_acc > best_ss_acc
@@ -293,4 +315,12 @@ def train_ss_fc(
             is_best,
             ss_task_name
         )
-    print('Best self-supervised accuracy (test set):', best_ss_acc)
+
+    if not show_animation:
+        ax.plot(train_loss_x, train_loss_y, 'ro-', label="Train Loss")
+        ax.plot(val_loss_x, val_loss_y, "bx-", label="Val Loss")
+
+    figure.savefig(f"{figure_save_dir}/{model.model_name}/{ss_task_name}/train.png", format="png")
+    plt.close("all")
+
+    print(f'Best {ss_task_name} accuracy (test set):', best_ss_acc)

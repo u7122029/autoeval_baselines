@@ -148,7 +148,7 @@ To test our results on one self-supervised task, please download and unpack the 
 
 ```bash
 cd code/
-python3 get_accuracy.py --model MODEL 
+python3 img_classification.py --model MODEL 
 python3 baselines/BASELINE.py --model MODEL [--show-graphs]
 ```
 

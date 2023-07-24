@@ -5,7 +5,7 @@ import pandas as pd
 from tabulate import tabulate
 
 from training_utils import load_original_cifar_dataset, get_model
-from utils import fit_lr, DEVICE, valid_models
+from utils import fit_lr, DEVICE, VALID_MODELS
 
 if __name__ == "__main__":
     temp_file_path = "../temp"
@@ -34,7 +34,7 @@ if __name__ == "__main__":
             "No. Parameters": []
         }
     }
-    for model_name in valid_models:
+    for model_name in VALID_MODELS:
         if model_name == "obc": continue
         for task_name in ["rotation", "jigsaw"]:
             train_x = np.load(f"{temp_file_path}/{model_name}/{task_name}/train_data.npy") * 100

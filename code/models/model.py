@@ -19,7 +19,7 @@ class Model(ABC, nn.Module):
         for param in self.model.parameters():
             param.requires_grad = False
 
-        self.fc_ss = None  # Every model needs this self-supervised layer, unless it is only being used for class acc.
+        self.fc_ss = None  # Every model needs this self-supervised layer, unless it is only being used for class classification.
 
     def load_ss_fc(self, link, is_local=False):
         # Load the weights of the self-supervised fc layer.

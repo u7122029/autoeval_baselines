@@ -139,7 +139,7 @@ Since all the image classification models we have chosen are pretrained, and the
 \begin{equation}
   \mathcal{L}_\text{R}(D_\text{src}) = \frac{1}{n_\text{src}}\sum_{k = 1}^{n_\text{src}} \mathcal{L}_\text{CE}(y_{\text{src}, k}, f_\text{R}(f_\text{FE}(X_{\text{src}, k})))
 \end{equation}
- %When training the model on rotation prediction, we feed in an image $X_{\text{train}, k}$ from $D_\text{train}$ that has been rotated about its centre at an angle of $\theta \in \{0^\circ,180^\circ,270^\circ\}$ into the model by applying the feature extraction layer $f_\text{FE}$ to obtain the feature vector, then applying the rotation prediction function $f_\text{R}$ to obtain a . 
+ %When training the model on rotation prediction, we feed in an image $X_{\text{train}, model}$ from $D_\text{train}$ that has been rotated about its centre at an angle of $\theta \in \{0^\circ,180^\circ,270^\circ\}$ into the model by applying the feature extraction layer $f_\text{FE}$ to obtain the feature vector, then applying the rotation prediction function $f_\text{R}$ to obtain a .
 
 \paragraph{Jigsaw Solving} We can write the loss function here in a similar manner, with $f_\text{J}$ being the function that applies the jigsaw prediction layer to a feature vector.
 \begin{equation}

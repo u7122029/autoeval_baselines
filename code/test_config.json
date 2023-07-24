@@ -1,0 +1,138 @@
+{
+    "resnet20": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "resnet32": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "resnet44": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": true,
+        "eval-doms": false
+    },
+    "resnet56": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "resnet110": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "resnet1202": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "repvgg": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "mobilenetv2": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "densenet121": {
+        "img_classification": true,
+        "rotation": true,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": true
+    },
+    "densenet161": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "densenet169": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "shufflenet": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "inception_v3": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "linear": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "alexnet": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "lenet5": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    },
+    "obc": {
+        "img_classification": false,
+        "rotation": false,
+        "jigsaw": false,
+        "train-ss-layer": false,
+        "show-graphs": false,
+        "eval-doms": false
+    }
+}
