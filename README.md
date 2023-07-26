@@ -23,7 +23,15 @@ This is a fork of [the 1st DataCV Challenge](https://sites.google.com/view/vdu-c
 
 ## Abstract
 
-We verify the linear relationship between image classification accuracy (classification) and rotation prediction (rotation) over the CIFAR-10 dataset and its variants. This extends previous work where the same correlation was observed over numerous datasets but one fixed classifier. We also verify the linear correlation for classification and jigsaw solving accuracy (jigsaw) over the same dataset. For both comparisons, all models (except one) showed a strong correlation over datasets constructed by directly using image transformations ($R^2 > 0.71$ for classification vs. rotation, $R^2 > 0.61$ for classification vs. jigsaw). However, some models showed a weak linear correlation between classification and rotation/jigsaw accuracy on images outside of CIFAR-10. This suggests that estimating a model's classification accuracy based on rotation/jigsaw accuracy depends on the model itself, however, this must be investigated further.
+We verify the linear relationship between image classification accuracy (classification) and rotation prediction accuracy
+(rotation) over the CIFAR-10 dataset and its variants. This extends previous work where the same correlation was 
+observed over numerous datasets but using only one fixed classifier for each. We also verify the same correlation with 
+jigsaw solving accuracy (jigsaw) in place of rotation. For both comparisons, all models (except one) showed a strong 
+correlation over datasets constructed by directly using image transformations ($R^2 > 0.71$ for classification vs. 
+rotation, $R^2 > 0.61$ for classification vs. jigsaw). However, some models showed a weak linear correlation between 
+classification and rotation/jigsaw accuracy on images outside of CIFAR-10. This suggests that the effectiveness of 
+estimating a model's classification accuracy based on rotation/jigsaw accuracy depends on the model itself, however, 
+this must be investigated further.
 
 ## Overview
 
@@ -59,9 +67,9 @@ without any transformations applied to each image aside from normalisation.
 
 The interior domain contains 1,000 transformed datasets from the original
 [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) test set, using the transformation strategies proposed by
-[Deng et al. (2021)](https://arxiv.org/abs/2007.02915).
+[Deng et al. (2021)](https://github.com/Simon4Yan/Meta-set).
 
-The interior domain datasets share a common label file named `labels.npy`, and images files are
+The interior domain datasets share a common label file named `labels.npy`, and image files are
 named `new_data_xxx.npy`,
 where `xxx` is a number from 000 to 999.
 
@@ -69,11 +77,21 @@ where `xxx` is a number from 000 to 999.
 
 The exterior domain contains datasets from
 
-- [CIFAR-10.1](https://github.com/modestyachts/CIFAR-10.1),
-- [CIFAR-10.1-C](https://github.com/hendrycks/robustness) (add
-  corruptions [(Hendrycks et al., 2019)](https://arxiv.org/abs/1903.12261)
-  to [CIFAR-10.1](https://github.com/modestyachts/CIFAR-10.1) dataset), and
-- CIFAR-10-F (real-world images collected from [Flickr](https://www.flickr.com))
+- [CIFAR-10.1](https://github.com/modestyachts/CIFAR-10.1) (1 dataset),
+- CIFAR-10.1-C - the original CIFAR-10.1 dataset but with image transformations applied:
+  - Robustness [(Hendrycks et al., 2019)](https://github.com/hendrycks/robustness) (x datasets)
+  - Meta-Set [(Deng et al., 2021)](https://github.com/Simon4Yan/Meta-set) (y datasets)
+  - Augmentation-Corruption [(Mintun et al., 2021)](https://github.com/facebookresearch/augmentation-corruption) (z datasets)
+- [CIFAR-10.2](https://github.com/modestyachts/CIFAR-10.2)
+- CIFAR-10.2-C - the original CIFAR-10.2 dataset but with image transformations applied:
+  - Robustness [(Hendrycks et al., 2019)](https://github.com/hendrycks/robustness) (x datasets)
+  - Meta-Set [(Deng et al., 2021)](https://github.com/Simon4Yan/Meta-set) (y datasets)
+  - Augmentation-Corruption [(Mintun et al., 2021)](https://github.com/facebookresearch/augmentation-corruption) (z datasets)
+- CIFAR-10-F - real-world images collected from [Flickr](https://www.flickr.com))
+- CIFAR-10-F-C - uses the exact same images as CIFAR-10-F but with image transformations applied:
+  - Robustness [(Hendrycks et al., 2019)](https://github.com/hendrycks/robustness) (x datasets)
+  - Meta-Set [(Deng et al., 2021)](https://github.com/Simon4Yan/Meta-set) (y datasets)
+  - Augmentation-Corruption [(Mintun et al., 2021)](https://github.com/facebookresearch/augmentation-corruption) (z datasets)
 
 The CIFAR-10.1 dataset is a single dataset, while CIFAR-10.1-C and CIFAR-10-F contain 19 and 20 datasets respectively.
 Therefore, the total number of datasets in the exterior domain is 40.
@@ -106,24 +124,24 @@ Without delving into too much technical detail, we can summarise our method as f
 Each model we tested had pretrained weights for image classification from an exterior source. This ensures near-optimal
 performance on image classification. We list the source, followed by the model names.
 
-For [akamaster/pytorch_resnet_cifar10](https://github.com/u7122029/pytorch_resnet_cifar10):
+From [akamaster/pytorch_resnet_cifar10](https://github.com/u7122029/pytorch_resnet_cifar10):
 
 - ResNet-110,
 - ResNet-1202
 
-For [chenyaofo/pytorch-cifar-models](https://github.com/chenyaofo/pytorch-cifar-models/tree/master):
+From [chenyaofo/pytorch-cifar-models](https://github.com/chenyaofo/pytorch-cifar-models/tree/master):
 
 - All other versions of ResNet,
 - MobileNet_v2,
 - RepVGG,
 - ShuffleNet
 
-For [huyvnphan/PyTorch_CIFAR10](https://github.com/u7122029/PyTorch_CIFAR10):
+From [huyvnphan/PyTorch_CIFAR10](https://github.com/u7122029/PyTorch_CIFAR10):
 
 - All versions of DenseNet,
 - Inception_v3,
 
-For [u7122029/pytorch-cifar10](https://github.com/u7122029/pytorch-cifar10)
+From [u7122029/pytorch-cifar10](https://github.com/u7122029/pytorch-cifar10)
 
 - AlexNet,
 - LeNet5,
@@ -147,34 +165,10 @@ To test our results on one self-supervised task, please download and unpack the 
 [downloads](#downloads) section into `code/data` and use the following.
 
 ```bash
-cd code/
-python3 img_classification.py --model MODEL 
-python3 baselines/BASELINE.py --model MODEL [--show-graphs]
+cd code
+python3 main.py
 ```
-
-Where
-
-- `BASELINE` is either `rotation` or `jigsaw`,
-- `MODEL` is one of
-    - `resnet20`,
-    - `resnet32`,
-    - `resnet44`,
-    - `resnet56`,
-    - `resnet110`,
-    - `resnet1202`,
-    - `repvgg`,
-    - `mobilenetv2`,
-    - `densenet121`,
-    - `densenet161`,
-    - `densenet169`,
-    - `shufflenet`,
-    - `inceptionv3`,
-    - `linear`,
-    - `alexnet`,
-    - `lenet5`,
-    - `obc`
-- `--show-graphs` will display the graphs of classification accuracy vs `BASELINE` accuracy for model `MODEL` on both
-  interior and exterior datasets.
+This will run all classifiers based on the settings given in `test_config.json`.
 
 ### Self-Supervised Task Metrics
 
