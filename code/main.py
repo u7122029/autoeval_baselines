@@ -2,16 +2,13 @@ import json
 import os
 
 from utils import (
-    get_dirs,
     VALID_MODELS,
     TEMP_PATH_DEFAULT,
     DATA_PATH_DEFAULT,
     BATCH_SIZE,
     EPOCHS,
     LEARN_RATE,
-    PRINT_FREQ,
-    TRAIN_DATA,
-    DEFAULT_DATASET_COND
+    PRINT_FREQ
 )
 
 import baselines.rotation as rotation, baselines.jigsaw as jigsaw, baselines.img_classification as classification
@@ -30,14 +27,11 @@ if __name__ == "__main__":
         ])
 
         want_ss = any([params["rotation"], params["jigsaw"]])
-        val_data = get_dirs(DATA_PATH_DEFAULT, DEFAULT_DATASET_COND)
         if (not img_class_done or params["img_classification"]) and want_ss:
             classification.main(model_name,
                                 DATA_PATH_DEFAULT,
                                 TEMP_PATH_DEFAULT,
-                                True,
-                                TRAIN_DATA,
-                                val_data)
+                                True)
 
         if params["rotation"]:
             rotation.main(model_name,
@@ -50,8 +44,6 @@ if __name__ == "__main__":
                           PRINT_FREQ,
                           params["eval-doms"],
                           False,
-                          TRAIN_DATA,
-                          val_data,
                           show_train_animation=False
                           )
 

@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+
 sys.path.append(".")
 
 import numpy as np
@@ -10,14 +11,17 @@ import matplotlib.pyplot as plt
 from utils import (
     TRANSFORM,
     fit_lr,
-    get_dirs,
+    ensure_cwd,
     VALID_MODELS,
     DEVICE,
     TEMP_PATH_DEFAULT,
-    TRAIN_DATA,
     DEFAULT_DATASET_COND,
-    JIGSAW_GRID_LENGTH,
-    DATA_PATH_DEFAULT, BATCH_SIZE, PRINT_FREQ, LEARN_RATE, EPOCHS, WEIGHTS_PATH_DEFAULT
+    DATA_PATH_DEFAULT,
+    BATCH_SIZE,
+    PRINT_FREQ,
+    LEARN_RATE,
+    EPOCHS,
+    WEIGHTS_PATH_DEFAULT
 )
 
 from training_utils import (
@@ -26,10 +30,7 @@ from training_utils import (
     train_ss_fc
 )
 
-from eval_utils import (
-    eval_train,
-    eval_validation
-)
+from eval_utils import DatasetCollection
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Rotation Prediction")
 parser.add_argument(
@@ -40,18 +41,11 @@ parser.add_argument(
     choices=VALID_MODELS
 )
 parser.add_argument(
-    "--dataset_path",
+    "--dataset-path",
     required=False,
     default=DATA_PATH_DEFAULT,
     type=str,
     help="path containing all datasets (training and validation)",
-)
-parser.add_argument(
-    "--grid_length",
-    required=False,
-    type=int,
-    default=JIGSAW_GRID_LENGTH,
-    help="The length of one side of a (square) jigsaw image."
 )
 parser.add_argument(
     "--batch_size",
@@ -181,8 +175,6 @@ def main(model_name,
          print_freq,
          reevaluate_domains,
          use_rand_labels_eval,
-         train_set,
-         val_set_paths,
          temp_file_path=TEMP_PATH_DEFAULT,
          device=DEVICE,
          weights_path=WEIGHTS_PATH_DEFAULT,
@@ -222,48 +214,44 @@ def main(model_name,
             show_animation=show_train_animation
         )
 
-    # All the below should be after training.
-    # The CIFAR-10 datasets used below are non-standard and have been manipulated in various ways.
-    # need to do rotation accuracy calculation
+
     if not os.path.exists(f"{temp_file_path}/{model_name}/{task_name}"):
         os.makedirs(f"{temp_file_path}/{model_name}/{task_name}")
 
     label_method = "rand" if use_rand_labels_eval else "expand"
-    ss_predictor_func = lambda dataloader: rotation_pred(dataloader,
-                                                         model,
-                                                         device,
-                                                         label_method=label_method)
+    ss_predictor_func = lambda dataloader, model_m: rotation_pred(dataloader,
+                                                                  model_m,
+                                                                  device,
+                                                                  label_method=label_method)
 
+    # Calculate task accuracy on training_datasets
     if reevaluate_domains or train_ss_layer or \
-            not os.path.exists(f"{temp_file_path}/{model_name}/{task_name}/{train_set}.npy") or \
+            not os.path.exists(f"{temp_file_path}/{model_name}/{task_name}/train_data.npy") or \
             not best_ss_weights_exists:
-        eval_train(dataset_path,
-                   temp_file_path,
-                   train_set,
-                   TRANSFORM,
-                   batch_size,
-                   ss_predictor_func,
-                   task_name,
-                   model_name)
+        train_collection = DatasetCollection("train_data", f"{dataset_path}/train_data", DEFAULT_DATASET_COND)
+        train_collection.eval_datasets(model,
+                                     temp_file_path,
+                                     TRANSFORM,
+                                     ss_predictor_func,
+                                     task_name
+                                     )
 
     if reevaluate_domains or train_ss_layer or \
             not os.path.exists(f"{temp_file_path}/{model_name}/{task_name}/val_sets.npy") or \
             not best_ss_weights_exists:
-        eval_validation(
-            temp_file_path,
-            val_set_paths,
-            TRANSFORM,
-            batch_size,
-            ss_predictor_func,
-            task_name,
-            model_name
-        )
+        val_collection = DatasetCollection("val_sets", f"{dataset_path}/val_sets", DEFAULT_DATASET_COND)
+        val_collection.eval_datasets(model,
+                                     temp_file_path,
+                                     TRANSFORM,
+                                     ss_predictor_func,
+                                     task_name
+                                     )
 
     print(
         f"===> Linear Regression model for rotation accuracy method with model: {model_name}"
     )
-    train_x = np.load(f"{temp_file_path}/{model_name}/{task_name}/{train_set}.npy") * 100
-    train_y = np.load(f"{temp_file_path}/{model_name}/classification/{train_set}.npy") * 100
+    train_x = np.load(f"{temp_file_path}/{model_name}/{task_name}/train_data.npy") * 100
+    train_y = np.load(f"{temp_file_path}/{model_name}/classification/train_data.npy") * 100
     val_x = np.load(f"{temp_file_path}/{model_name}/{task_name}/val_sets.npy") * 100
     val_y = np.load(f"{temp_file_path}/{model_name}/classification/val_sets.npy") * 100
     if show_train_animation:
@@ -279,7 +267,9 @@ def main(model_name,
            show_graphs=show_graphs,
            save_graphs_dir=f"{temp_file_path}/{model_name}/{task_name}")
 
+
 if __name__ == "__main__":
+    ensure_cwd()
     args = parser.parse_args()
     main(args.model,
          args.dataset_path,
@@ -290,6 +280,4 @@ if __name__ == "__main__":
          args.lr,
          args.print_freq,
          args.reevaluate_domains,
-         args.use_rand_labels_eval,
-         TRAIN_DATA,
-         get_dirs(DATA_PATH_DEFAULT, DEFAULT_DATASET_COND))
+         args.use_rand_labels_eval)

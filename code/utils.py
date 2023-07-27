@@ -1,5 +1,5 @@
 import os
-import shutil
+from pathlib import Path
 from itertools import permutations
 
 import matplotlib.pyplot as plt
@@ -113,17 +113,6 @@ class CIFAR10NP(torch.utils.data.Dataset):
         if self.transform:
             img = self.transform(img)
         return img, label
-
-
-def get_dirs(root, cond=None):
-    if not cond:
-        cond = lambda root, dir, files: True
-
-    out_dirs = set()
-    for root, dir, files in os.walk(root):
-        if cond(root, dir, files):
-            out_dirs.add(root)
-    return sorted(list(out_dirs))
 
 
 def predict_multiple(model, imgs):
@@ -243,5 +232,22 @@ def fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, show_graphs=Fa
     plt.close("all")
     return lr_train_rmse_loss_train, lr_val_rmse_loss_val, lr_train_rmse_loss_val, lr_train_r2_train, lr_val_r2_val, lr_train_r2_val
 
+
+def normalise_path(path):
+    path = path.replace("\\", "/")
+    if path[-1] == "/":
+        path = path[:-1]
+
+    return path
+
+def ensure_cwd():
+    current_dir = Path.cwd()
+    checker = current_dir.parts
+    if checker[-1] != "code" and checker[-2] != "autoeval_baselines":
+        raise Exception(
+            f"STOP. Make sure you are running this program in autoeval_baselines/code.\n"
+            f"You are currently running this program in {current_dir}. Check the README.md for more information.")
+
+
 if __name__ == "__main__":
-    print(len(get_dirs("data/val_data", DEFAULT_DATASET_COND)))
+    pass

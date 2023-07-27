@@ -25,3 +25,7 @@ class AlexNet_SS(Model, nn.Module):
         out_class = self.fc(x)
         out_ss = self.fc_ss(x)
         return out_class, out_ss
+
+if __name__ == "__main__":
+    model = AlexNet_SS()
+    print(model)

@@ -30,8 +30,7 @@ from training_utils import (
 )
 
 from eval_utils import (
-    eval_validation,
-    eval_train
+    DatasetCollection
 )
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Jigsaw Prediction")

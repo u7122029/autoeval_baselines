@@ -7,22 +7,22 @@ sys.path.append(".")
 import numpy as np
 import torch
 
-from eval_utils import (
-    eval_train,
-    eval_validation
-)
+from eval_utils import DatasetCollection
 
 from utils import (
     predict_multiple,
-    get_dirs,
+    ensure_cwd,
+    normalise_path,
     TRANSFORM,
     VALID_MODELS,
     DEVICE,
     TEMP_PATH_DEFAULT,
     DATA_PATH_DEFAULT,
-    TRAIN_DATA, VAL_DATA,
+    DEFAULT_DATASET_COND
 )
+
 from training_utils import get_model
+from pathlib import Path
 
 parser = argparse.ArgumentParser(description="AutoEval Baselines - Image Classification")
 parser.add_argument(
@@ -33,7 +33,19 @@ parser.add_argument(
     choices=VALID_MODELS
 )
 parser.add_argument(
-    "--dataset-path",
+    "--train-sets",
+    required=True,
+    nargs="*",
+    help="List of train dataset roots, space separated."
+)
+parser.add_argument(
+    "--val-sets",
+    required=True,
+    nargs="*",
+    help="List of validation dataset roots, space separated."
+)
+parser.add_argument(
+    "--data-root",
     required=False,
     default=DATA_PATH_DEFAULT,
     type=str,
@@ -66,51 +78,54 @@ def calculate_acc(dataloader, model, device=DEVICE):
     return np.mean(correct)
 
 
-def main(model_name, dataset_path, temp_file_path, recompute_acc, train_set, val_sets,
+def main(model_name,
+         data_path,
+         temp_file_path,
+         recompute_acc,
+         train_data_roots,
+         val_data_roots,
          device=DEVICE):
-    if dataset_path.endswith('/'):
-        dataset_path = dataset_path[:-1]
+    
+    data_path = Path(data_path)
+    temp_file_path = Path(temp_file_path)
+    train_data_roots = [Path(i) for i in train_data_roots]
+    val_data_roots = [Path(i) for i in val_data_roots]
+    
+    task_name = "classification"
 
-    batch_size = 500
     # load the model
-    model = get_model(model_name, "accuracy", 4, device, load_best_fc=False)
+    model = get_model(model_name, task_name, 4, device, load_best_fc=False)
     model.eval()
 
     # if there is no temp file path, make it.
-    if not os.path.exists(f"{temp_file_path}/{model_name}/classification"):
-        os.makedirs(f"{temp_file_path}/{model_name}/classification")
+    if not (temp_file_path / model_name / task_name).exists():
+        (temp_file_path / model_name / task_name).mkdir()
 
     # need to do accuracy calculation
-    predictor_func = lambda dataloader: calculate_acc(dataloader, model, device)
-    if not os.path.exists(f"{temp_file_path}/{model_name}/classification/{train_set}.npy") or recompute_acc:
-        eval_train(
-            dataset_path,
-            temp_file_path,
-            train_set,
-            TRANSFORM,
-            batch_size,
-            predictor_func,
-            "classification",
-            model_name
-        )
+    predictor_func = lambda dataloader, model_m: calculate_acc(dataloader, model_m, device)
+    for train_root in train_data_roots:
+        dir_path = temp_file_path / model_name / task_name / train_root
+        if not dir_path.exists() or recompute_acc:
+            dir_path.mkdir(parents=True, exist_ok=True)
+            train_data = DatasetCollection(str(train_root), data_path / train_root)
+            train_accs = train_data.eval_datasets(model, TRANSFORM, predictor_func, task_name)
+            np.save(str(dir_path / "train_data.npy"), train_accs)
 
-    if not os.path.exists(f"{temp_file_path}/{model_name}/classification/val_sets.npy") or recompute_acc:
-        eval_validation(
-            temp_file_path,
-            val_sets,
-            TRANSFORM,
-            batch_size,
-            predictor_func,
-            "classification",
-            model_name
-        )
+    for val_root in val_data_roots:
+        dir_path = temp_file_path / model_name / task_name / val_root
+        if not dir_path.exists() or recompute_acc:
+            dir_path.mkdir(parents=True, exist_ok=True)
+            val_data = DatasetCollection(str(val_root), data_path / val_root)
+            val_accs = val_data.eval_datasets(model, TRANSFORM, predictor_func, task_name)
+            np.save(str(dir_path / "val_data.npy"), val_accs)
 
 
 if __name__ == "__main__":
+    ensure_cwd()
     args = parser.parse_args()
     main(args.model,
-         args.dataset_path,
+         args.data_root,
          args.temp_path,
          args.recompute_acc,
-         TRAIN_DATA,
-         get_dirs(VAL_DATA, DATA_PATH_DEFAULT))
+         args.train_sets,
+         args.val_sets)
