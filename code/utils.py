@@ -10,28 +10,19 @@ import torchvision.transforms
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from tabulate import tabulate
+from models.model import Model
+from tqdm import tqdm
 
-### PATHS
+# PATHS
 TEMP_PATH_DEFAULT = "../temp"
+RESULTS_PATH_DEFAULT = "../results"
 WEIGHTS_PATH_DEFAULT = "../model_weights"
 DATA_PATH_DEFAULT = "data"
 TRAIN_DATA = "train_data"
 VAL_DATA = "val_data"
 DEFAULT_DATASET_COND = lambda root, dirs, files: "data.npy" in files and "labels.npy" in files
-"""VAL_SETS = sorted([
-    "cifar10-f-32",
-    "cifar-10.1-c",
-    "cifar-10.1",
-    "cifar-10.2-train-sets",
-    "cifar-10.2-val",
-    "cifar-10.2-val-c",
-    "cifar-10.2-train-c-1",
-    "cifar-10.2-train-c-2",
-    "cifar-10.2-train-c-3",
-    "cifar-10.2-train-c-4",
-    "cifar-10.2-train-c-5"] + [f"cifar10-f-32-c-{i}" for i in range(1,21)])"""
 
-### SS LAYER TRAINING
+# SS LAYER TRAINING
 BATCH_SIZE = 64
 JIGSAW_GRID_LENGTH = 2
 PRINT_FREQ = 100
@@ -113,6 +104,34 @@ class CIFAR10NP(torch.utils.data.Dataset):
         if self.transform:
             img = self.transform(img)
         return img, label
+
+class DatasetEvaluator:
+    def __init__(self, dir_path: Path, transform):
+        self.dir_path = dir_path
+        self.transform = transform
+
+    def evaluate(self, model: Model, predictor_func):
+        """
+
+        :param model:
+        :param predictor_func:
+        :return:
+        """
+        data_path = str(self.dir_path / "data.npy")
+        label_path = str(self.dir_path / "labels.npy")
+
+        dataloader = torch.utils.data.DataLoader(
+            dataset=CIFAR10NP(
+                data_path=data_path,
+                label_path=label_path,
+                transform=self.transform,
+            ),
+            batch_size=500,
+            shuffle=False,
+        )
+
+        acc = predictor_func(dataloader, model)
+        return acc
 
 
 def predict_multiple(model, imgs):
@@ -233,12 +252,36 @@ def fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, show_graphs=Fa
     return lr_train_rmse_loss_train, lr_val_rmse_loss_val, lr_train_rmse_loss_val, lr_train_r2_train, lr_val_r2_val, lr_train_r2_val
 
 
-def normalise_path(path):
-    path = path.replace("\\", "/")
-    if path[-1] == "/":
-        path = path[:-1]
+def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func):
+    if (temp_root / f"{model.model_name}_{name}.npy").exists():
+        return
 
-    return path
+    if (data_root / "data.npy").exists() and (data_root / "labels.npy").exists():
+        # Leaf directory. Ignore anything else in here.
+        evaluator = DatasetEvaluator(data_root, TRANSFORM)
+        acc = evaluator.evaluate(model, predictor_func)
+
+        temp_root.mkdir(parents=True, exist_ok=True)
+        np.save(str(temp_root / f"{model.model_name}_{name}.npy"), np.array([acc], dtype=np.float64))
+        return
+
+    # Visit all subdirs
+    print(f"Current data collection: {str(data_root)}\tCurrent temp path: {str(temp_root)}")
+    out = []
+    dirs = sorted(data_root.iterdir())
+    for path in tqdm(dirs, total=len(list(dirs))):  # Sorting ensures order.
+        if not path.is_dir():
+            # Skip files.
+            continue
+        entity = path.parts[-1]
+        dataset_recurse(data_root / entity, temp_root / entity, name, model, predictor_func)
+        loaded = np.load(str(temp_root / entity / f"{model.model_name}_{name}.npy"))
+        out.append(loaded)
+    out = np.concatenate(out)
+
+    temp_root.mkdir(parents=True, exist_ok=True)
+    np.save(str(temp_root / f"{model.model_name}_{name}.npy"), out)
+
 
 def ensure_cwd():
     current_dir = Path.cwd()

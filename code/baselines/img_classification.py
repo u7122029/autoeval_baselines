@@ -1,5 +1,5 @@
 import argparse
-import os
+from tqdm import tqdm
 import sys
 
 sys.path.append(".")
@@ -7,18 +7,15 @@ sys.path.append(".")
 import numpy as np
 import torch
 
-from eval_utils import DatasetCollection
-
 from utils import (
+    dataset_recurse,
     predict_multiple,
     ensure_cwd,
-    normalise_path,
-    TRANSFORM,
     VALID_MODELS,
     DEVICE,
     TEMP_PATH_DEFAULT,
     DATA_PATH_DEFAULT,
-    DEFAULT_DATASET_COND
+    RESULTS_PATH_DEFAULT
 )
 
 from training_utils import get_model
@@ -33,16 +30,10 @@ parser.add_argument(
     choices=VALID_MODELS
 )
 parser.add_argument(
-    "--train-sets",
+    "--dsets",
     required=True,
     nargs="*",
-    help="List of train dataset roots, space separated."
-)
-parser.add_argument(
-    "--val-sets",
-    required=True,
-    nargs="*",
-    help="List of validation dataset roots, space separated."
+    help="List of relative train dataset roots, space separated."
 )
 parser.add_argument(
     "--data-root",
@@ -59,11 +50,11 @@ parser.add_argument(
     help="The path to store temporary files."
 )
 parser.add_argument(
-    "--recompute-acc",
+    "--results-path",
     required=False,
-    default=False,
-    action="store_true",
-    help="True if the accuracies should be recomputed. False otherwise."
+    default=RESULTS_PATH_DEFAULT,
+    type=str,
+    help="The path to store results."
 )
 
 
@@ -79,45 +70,27 @@ def calculate_acc(dataloader, model, device=DEVICE):
 
 
 def main(model_name,
-         data_path,
+         data_root,
          temp_file_path,
-         recompute_acc,
-         train_data_roots,
-         val_data_roots,
+         results_path,
+         dset_paths,
          device=DEVICE):
-    
-    data_path = Path(data_path)
+    data_root = Path(data_root)
     temp_file_path = Path(temp_file_path)
-    train_data_roots = [Path(i) for i in train_data_roots]
-    val_data_roots = [Path(i) for i in val_data_roots]
-    
+    results_path = Path(results_path)
+    dset_paths = [Path(i) for i in dset_paths]
+
     task_name = "classification"
 
     # load the model
     model = get_model(model_name, task_name, 4, device, load_best_fc=False)
     model.eval()
 
-    # if there is no temp file path, make it.
-    if not (temp_file_path / model_name / task_name).exists():
-        (temp_file_path / model_name / task_name).mkdir()
-
-    # need to do accuracy calculation
+    # Classification accuracy predictor.
     predictor_func = lambda dataloader, model_m: calculate_acc(dataloader, model_m, device)
-    for train_root in train_data_roots:
-        dir_path = temp_file_path / model_name / task_name / train_root
-        if not dir_path.exists() or recompute_acc:
-            dir_path.mkdir(parents=True, exist_ok=True)
-            train_data = DatasetCollection(str(train_root), data_path / train_root)
-            train_accs = train_data.eval_datasets(model, TRANSFORM, predictor_func, task_name)
-            np.save(str(dir_path / "train_data.npy"), train_accs)
-
-    for val_root in val_data_roots:
-        dir_path = temp_file_path / model_name / task_name / val_root
-        if not dir_path.exists() or recompute_acc:
-            dir_path.mkdir(parents=True, exist_ok=True)
-            val_data = DatasetCollection(str(val_root), data_path / val_root)
-            val_accs = val_data.eval_datasets(model, TRANSFORM, predictor_func, task_name)
-            np.save(str(dir_path / "val_data.npy"), val_accs)
+    for dset_collection_root in dset_paths:
+        results_root = results_path / "raw_findings" / dset_collection_root
+        dataset_recurse(data_root / dset_collection_root, results_root, task_name, model, predictor_func)
 
 
 if __name__ == "__main__":
@@ -126,6 +99,5 @@ if __name__ == "__main__":
     main(args.model,
          args.data_root,
          args.temp_path,
-         args.recompute_acc,
-         args.train_sets,
-         args.val_sets)
+         args.results_path,
+         args.dsets)
