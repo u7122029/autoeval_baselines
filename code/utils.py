@@ -105,17 +105,19 @@ class CIFAR10NP(torch.utils.data.Dataset):
             img = self.transform(img)
         return img, label
 
+
 class DatasetEvaluator:
     def __init__(self, dir_path: Path, transform):
         self.dir_path = dir_path
         self.transform = transform
 
-    def evaluate(self, model: Model, predictor_func):
+    def evaluate(self, model: Model, predictor_func, device=DEVICE):
         """
-
-        :param model:
-        :param predictor_func:
-        :return:
+        Evaluate the dataset over a given model and predictor function.
+        :param model: The model.
+        :param predictor_func: The predictor function.
+        :param device: The device.
+        :return: The accuracy of the model over the dataset.
         """
         data_path = str(self.dir_path / "data.npy")
         label_path = str(self.dir_path / "labels.npy")
@@ -130,7 +132,7 @@ class DatasetEvaluator:
             shuffle=False,
         )
 
-        acc = predictor_func(dataloader, model)
+        acc = predictor_func(dataloader, model, device)
         return acc
 
 
@@ -145,29 +147,29 @@ def predict_multiple(model, imgs):
     return pred, torch.nn.functional.softmax(prob, dim=1).cpu().numpy()
 
 
-def store_ans(answers, file_name="answer.txt"):
-    # This function ensures that the format of submission
-    with open(file_name, "w") as f:
-        for answer in answers:
-            # Ensure that 6 decimals are used
-            f.write("{:.6f}\n".format(answer))
-
-
-def inverse_permutation(perm):
+def inverse_permutation(perm: torch.Tensor):
     inv = torch.empty_like(perm)
     inv[perm] = torch.arange(perm.size(0), device=perm.device)
     return inv
 
 
-def construct_permutation_mappings(grid_length):
+def construct_permutation_mappings(grid_length, num_out_perms=None):
     """
     Returns a mapping from the integers to grid_length**2 permutations in tuple form to the integers
-    :param grid_length: The length of one side of the square grid
+    :param grid_length: The length of one side of the square grid.
+    :param num_out_perms: The number of output permutations.
     :return: The integers to permutations mapping and its inverse.
     """
-    perms = torch.tensor(list(permutations(range(grid_length ** 2))))
+    if num_out_perms is None:
+        num_out_perms = grid_length ** 2
 
-    return {k: {"perm": v, "inverse": inverse_permutation(v)} for k, v in enumerate(perms)}
+    perms = permutations(range(grid_length ** 2))
+    out = {}
+    for i in range(num_out_perms):
+        perm = torch.Tensor(next(perms))
+        out[i] = {"perm": perm, "inverse": inverse_permutation(perm)}
+
+    return out
 
 
 def adjust_learning_rate(optimizer, epoch, lr):
@@ -178,7 +180,13 @@ def adjust_learning_rate(optimizer, epoch, lr):
 
 
 def accuracy(output, target, topk=(1,)):
-    """Computes the precision@model for the specified values of model"""
+    """
+    Computes the precision@model for the specified values of model
+    :param output:
+    :param target:
+    :param topk:
+    :return:
+    """
     maxk = max(topk)
     batch_size = target.size(0)
 
@@ -252,7 +260,7 @@ def fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, show_graphs=Fa
     return lr_train_rmse_loss_train, lr_val_rmse_loss_val, lr_train_rmse_loss_val, lr_train_r2_train, lr_val_r2_val, lr_train_r2_val
 
 
-def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func):
+def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func, device=DEVICE):
     if (temp_root / f"{model.model_name}_{name}.npy").exists():
         return
 
@@ -275,7 +283,7 @@ def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, p
             continue
         entity = path.parts[-1]
         dataset_recurse(data_root / entity, temp_root / entity, name, model, predictor_func)
-        print(f"Returned to data collection: {str(data_root)}\twith temp path: {str(temp_root)}")
+        # print(f"Returned to data collection: {str(data_root)}\twith temp path: {str(temp_root)}")
         loaded = np.load(str(temp_root / entity / f"{model.model_name}_{name}.npy"))
         out.append(loaded)
     out = np.concatenate(out)

@@ -69,32 +69,31 @@ def calculate_acc(dataloader, model, device=DEVICE):
     return np.mean(correct)
 
 
-def main(model_name,
-         data_root,
-         results_path,
-         dset_paths,
-         device=DEVICE):
+pred_func = lambda dataloader, model_m, device: calculate_acc(dataloader, model_m, device)
+
+
+def generate_results(model_name, task_name, data_root, results_path, dset_paths, model_ss_out_size, predictor_func,
+                     device=DEVICE):
     data_root = Path(data_root)
     results_path = Path(results_path)
     dset_paths = [Path(i) for i in dset_paths]
 
-    task_name = "classification"
-
     # load the model
-    model = get_model(model_name, task_name, 4, device, load_best_fc=False)
+    model = get_model(model_name, task_name, model_ss_out_size, device, load_best_fc=False)
     model.eval()
 
-    # Classification accuracy predictor.
-    predictor_func = lambda dataloader, model_m: calculate_acc(dataloader, model_m, device)
     for dset_collection_root in dset_paths:
         results_root = results_path / "raw_findings" / dset_collection_root
-        dataset_recurse(data_root / dset_collection_root, results_root, task_name, model, predictor_func)
+        dataset_recurse(data_root / dset_collection_root, results_root, task_name, model, predictor_func, device)
 
 
 if __name__ == "__main__":
     ensure_cwd()
     args = parser.parse_args()
-    main(args.model,
-         args.data_root,
-         args.results_path,
-         args.dsets)
+    generate_results(args.model,
+                     "classification",
+                     args.data_root,
+                     args.results_path,
+                     args.dsets,
+                     4,
+                     pred_func)
