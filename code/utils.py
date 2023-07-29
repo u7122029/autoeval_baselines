@@ -275,6 +275,7 @@ def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, p
             continue
         entity = path.parts[-1]
         dataset_recurse(data_root / entity, temp_root / entity, name, model, predictor_func)
+        print(f"Returned to data collection: {str(data_root)}\twith temp path: {str(temp_root)}")
         loaded = np.load(str(temp_root / entity / f"{model.model_name}_{name}.npy"))
         out.append(loaded)
     out = np.concatenate(out)

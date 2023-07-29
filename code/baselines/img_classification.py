@@ -71,12 +71,10 @@ def calculate_acc(dataloader, model, device=DEVICE):
 
 def main(model_name,
          data_root,
-         temp_file_path,
          results_path,
          dset_paths,
          device=DEVICE):
     data_root = Path(data_root)
-    temp_file_path = Path(temp_file_path)
     results_path = Path(results_path)
     dset_paths = [Path(i) for i in dset_paths]
 
@@ -98,6 +96,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(args.model,
          args.data_root,
-         args.temp_path,
          args.results_path,
          args.dsets)
