@@ -1,13 +1,10 @@
 import time
-import os
 import shutil
 import matplotlib.pyplot as plt
-import numpy as np
 import torch.nn as nn
 import torch.nn.functional
 import torch.utils.data
 import torchvision.datasets as datasets
-import torchvision.transforms as transforms
 
 from models.alexnet import AlexNet_SS
 from models.densenet import DenseNet_SS
@@ -22,60 +19,54 @@ from models.shufflenet import ShuffleNet_SS
 from utils import (
     AverageMeter,
     adjust_learning_rate,
+    DEVICE,
     EPOCHS,
     MOMENTUM,
     WEIGHT_DECAY,
     LEARN_RATE,
     PRINT_FREQ,
-    WEIGHTS_PATH_DEFAULT
+    RESULTS_PATH_DEFAULT,
+    WEIGHTS_PATH_DEFAULT,
+    TRANSFORM
 )
 
+from pathlib import Path
+from models.model import Model
 
-def load_original_cifar_dataset(device, batch_size, dataset_path):
+
+def load_original_cifar_dataset(data_root: Path, batch_size, device=DEVICE, transform=TRANSFORM):
     """
     Load the original cifar-10 datasets.
+    :param data_root: The root path of all datasets.
+    :param batch_size: The size of each batch.
     :param device: The device that the datasets should be on.
-    :param batch_size: The size of each batch
-    :param dataset_path: The path of the dataset
+    :param transform: The transformation to apply on each dataset.
     :return: The training and testing datasets.
     """
-
-    normalize = transforms.Normalize(
-        (0.4914, 0.4822, 0.4465),
-        (0.2023, 0.1994, 0.2010)
-    )
-
-    transform_train = transforms.Compose([
-        transforms.ToTensor(),
-        normalize,
-    ])
-    transform_test = transforms.Compose([
-        transforms.ToTensor(),
-        normalize
-    ])
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
 
     train_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(dataset_path, train=True, download=True, transform=transform_train),
+        datasets.CIFAR10(str(data_root), train=True, download=True, transform=transform),
         batch_size=batch_size, shuffle=True, **kwargs
     )
 
     test_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(dataset_path, train=False, transform=transform_test),
+        datasets.CIFAR10(str(data_root), train=False, transform=transform),
         batch_size=batch_size, shuffle=False, **kwargs
     )
 
     return train_loader, test_loader
 
 
-def get_model(name, task, num_ss_classes, device, load_best_fc=True):
+def get_model(name, task, num_ss_classes, device=DEVICE, load_best_fc=True):
     """
+
     :param name: The name of the backbone model
     :param task: The self-supervision task
     :param num_ss_classes: The number of classes in the self-supervision task
     :param device: The device the model should run on
-    :param train_ss_fc: Whether to train the self-supervision FC layer (True) or not (False).
+    :param load_best_fc: True if the best model weights should be loaded, and false otherwise.
     :return: Instance of the model, with backbone model weights preloaded.
     """
 
@@ -109,7 +100,6 @@ def get_model(name, task, num_ss_classes, device, load_best_fc=True):
     if load_best_fc:
         # If we are not training the self-supervision FC layer, we should try to load in its best checkpoint
         model.load_ss_fc(f"../model_weights/{name}/{task}/best.pt", is_local=True)
-        model.eval()
 
     model.to(device)
     return model
@@ -211,12 +201,22 @@ def test_model(test_dataloader, model, device, ss_batch_func=None):
 
     return acc, losses
 
-def save_checkpoint(model, is_best, task_name):
-    """Saves checkpoint to disk"""
-    directory = f"../model_weights/{model.model_name}/{task_name}"
-    model.save_ss_fc(directory, "checkpoint.pt")
+
+def save_checkpoint(model: Model, weights_path: Path, is_best: bool, task_name: str):
+    """
+    Saves model weights to disk.
+    :param model: The model.
+    :param weights_path: The path to save the weights.
+    :param is_best: Whether the current weights performed best
+    :param task_name: The name of the task.
+    :return: None.
+    """
+    directory = weights_path / model.model_name / task_name
+    model.save_ss_fc(str(directory), "checkpoint.pt")
+
     if is_best:
-        shutil.copyfile(f"{directory}/checkpoint.pt", f'{directory}/best.pt')
+        shutil.copyfile(str(directory / "checkpoint.pt"), str(directory / "best.pt"))
+
 
 def train_ss_fc(
         model,
@@ -231,9 +231,12 @@ def train_ss_fc(
         weight_decay=WEIGHT_DECAY,
         print_freq=PRINT_FREQ,
         show_animation=True,
-        figure_save_dir=WEIGHTS_PATH_DEFAULT):
-    # Set up figure for plotting losses per epoch
+        weights_path=WEIGHTS_PATH_DEFAULT):
 
+    weights_path = Path(weights_path)
+    #results_path = Path(results_path)
+
+    # Set up figure for plotting losses per epoch
     figure = plt.figure()
     ax = figure.add_subplot(111)
     ax.set_title(f"Loss for each Epoch ({model.model_name})")
@@ -276,10 +279,6 @@ def train_ss_fc(
             print_freq
         )
 
-        # evaluate on test set for image classification.
-        # Class accuracy stays constant. So we don't need to calculate it.
-        # class_acc = test_class(test_loader, model, device, args)
-
         # evaluate on test set for self-supervised prediction
         ss_acc, val_losses = test_model(
             test_loader,
@@ -308,19 +307,19 @@ def train_ss_fc(
 
         # remember best prec@1 and save checkpoint
         is_best = ss_acc > best_ss_acc
-        # best_class_acc = max(class_acc, best_class_acc)
         best_ss_acc = max(ss_acc, best_ss_acc)
         save_checkpoint(
             model,
+            weights_path,
             is_best,
-            ss_task_name
+            ss_task_name,
         )
 
     if not show_animation:
         ax.plot(train_loss_x, train_loss_y, 'ro-', label="Train Loss")
         ax.plot(val_loss_x, val_loss_y, "bx-", label="Val Loss")
 
-    figure.savefig(f"{figure_save_dir}/{model.model_name}/{ss_task_name}/train.png", format="png")
+    figure.savefig(weights_path / model.model_name / ss_task_name / "train.png", format="png")
     plt.close("all")
 
     print(f'Best {ss_task_name} accuracy (test set):', best_ss_acc)

@@ -12,6 +12,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from tabulate import tabulate
 from models.model import Model
 from tqdm import tqdm
+from training_utils import get_model
 
 # PATHS
 TEMP_PATH_DEFAULT = "../temp"
@@ -201,7 +202,73 @@ def accuracy(output, target, topk=(1,)):
     return res
 
 
-def fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, show_graphs=False, save_graphs_dir=None):
+def generate_results(model_name,
+                     task_name,
+                     data_root,
+                     results_path,
+                     dset_paths,
+                     model_ss_out_size,
+                     predictor_func,
+                     recalculate_results=False,
+                     device=DEVICE):
+    data_root = Path(data_root)
+    results_path = Path(results_path)
+    dset_paths = [Path(i) for i in dset_paths]
+
+    # load the model
+    model = get_model(model_name, task_name, model_ss_out_size, device, load_best_fc=False)
+    model.eval()
+
+    for dset_collection_root in dset_paths:
+        results_root = results_path / "raw_findings" / dset_collection_root
+        dataset_recurse(data_root / dset_collection_root,
+                        results_root,
+                        task_name,
+                        model,
+                        predictor_func,
+                        device,
+                        recalculate_results)
+
+
+def generate_graph(train_results_path: Path,
+                   val_results_path: Path,
+                   x_task: str,
+                   y_task: str,
+                   model_name: str,
+                   output_path: Path,
+                   results_root: Path = RESULTS_PATH_DEFAULT,
+                   show_graphs=False
+                   ):
+    print(
+        f"===> Linear Regression model for {y_task} vs {x_task} with model: {model_name}"
+    )
+    train_x = np.load(str(results_root / "raw_findings" / train_results_path / f"{model_name}_{x_task}.npy")) * 100
+    train_y = np.load(str(results_root / "raw_findings" / train_results_path / f"{model_name}_{y_task}.npy")) * 100
+    val_x = np.load(str(results_root / "raw_findings" / val_results_path / f"{model_name}_{x_task}.npy")) * 100
+    val_y = np.load(str(results_root / "raw_findings" / val_results_path / f"{model_name}_{y_task}.npy")) * 100
+
+    title = f"{y_task} vs. {x_task} ({model_name})"
+
+    fit_lr(train_x,
+           train_y,
+           val_x,
+           val_y,
+           title,
+           x_task,
+           y_task,
+           show_graphs=show_graphs,
+           output=output_path)
+
+
+def fit_lr(train_x,
+           train_y,
+           val_x,
+           val_y,
+           title: str,
+           x_task: str,
+           y_task: str,
+           show_graphs: bool = False,
+           output: Path = None):
     lr_train = LinearRegression()
     lr_train.fit(train_x.reshape(-1, 1), train_y)
 
@@ -231,16 +298,16 @@ def fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, show_graphs=Fa
     print(tabulate(grid, headers="firstrow", tablefmt="psql"))
 
     plt.figure()
-    plt.title(f"Classification Acc. vs {task_name} Acc. ({model_name})")
-    plt.xlabel(f"{task_name} Accuracy")
-    plt.ylabel("Classification Accuracy")
+    plt.title(title)
+    plt.xlabel(f"{x_task.capitalize()} Accuracy")
+    plt.ylabel(f"{y_task.capitalize()} Accuracy")
     plt.scatter(train_x.reshape(-1, 1), train_y, marker="+", linewidths=0.75, color="blue")
     plt.scatter(val_x.reshape(-1, 1), val_y, marker="x", linewidths=0.5, color="red")
     plt.plot(train_x.reshape(-1, 1), lr_train_train_y_hat, "b", label="Interior Domain")
     plt.plot(val_x.reshape(-1, 1), lr_val_val_y_hat, "r", label="Exterior Domain")
     plt.legend(loc="best")
-    if save_graphs_dir:
-        plt.savefig(f"{save_graphs_dir}/graph.png", format="png")
+    if output:
+        plt.savefig(str(output), format="svg")
 
     """plt.figure()
     plt.title(f"Classification Acc. vs {task_name} Acc. ({model_name}) - Exterior Domain")
@@ -260,14 +327,14 @@ def fit_lr(train_x, train_y, val_x, val_y, task_name, model_name, show_graphs=Fa
     return lr_train_rmse_loss_train, lr_val_rmse_loss_val, lr_train_rmse_loss_val, lr_train_r2_train, lr_val_r2_val, lr_train_r2_val
 
 
-def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func, device=DEVICE):
-    if (temp_root / f"{model.model_name}_{name}.npy").exists():
+def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func, device=DEVICE, recalculate=False):
+    if not recalculate and (temp_root / f"{model.model_name}_{name}.npy").exists():
         return
 
     if (data_root / "data.npy").exists() and (data_root / "labels.npy").exists():
         # Leaf directory. Ignore anything else in here.
         evaluator = DatasetEvaluator(data_root, TRANSFORM)
-        acc = evaluator.evaluate(model, predictor_func)
+        acc = evaluator.evaluate(model, predictor_func, device)
 
         temp_root.mkdir(parents=True, exist_ok=True)
         np.save(str(temp_root / f"{model.model_name}_{name}.npy"), np.array([acc], dtype=np.float64))
@@ -283,7 +350,6 @@ def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, p
             continue
         entity = path.parts[-1]
         dataset_recurse(data_root / entity, temp_root / entity, name, model, predictor_func)
-        # print(f"Returned to data collection: {str(data_root)}\twith temp path: {str(temp_root)}")
         loaded = np.load(str(temp_root / entity / f"{model.model_name}_{name}.npy"))
         out.append(loaded)
     out = np.concatenate(out)

@@ -7,6 +7,7 @@ sys.path.append(".")
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 from utils import (
     TRANSFORM,
@@ -31,7 +32,11 @@ from training_utils import (
     train_ss_fc
 )
 
-from eval_utils import DatasetCollection
+from utils import (
+    generate_results
+)
+
+from models.model import Model
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Rotation Prediction")
 parser.add_argument(
@@ -166,119 +171,99 @@ def rotation_pred(dataloader, model, device, label_method="expand"):
     return np.mean(correct_rot)
 
 
+# label_method = "rand" if use_rand_labels_eval else "expand"
+ss_batch_func = lambda inp_batch: rotate_batch(inp_batch, "rand")
+ss_predictor_func = lambda dataloader, model, device: rotation_pred(dataloader,
+                                                                    model,
+                                                                    device)
+
+
+def train_original_cifar10(data_root: Path,
+                           model: Model,
+                           task_name: str,
+                           batch_func,
+                           batch_size: int,
+                           epochs: int,
+                           lr: float,
+                           print_freq: int,
+                           weights_path: Path,
+                           device=DEVICE,
+                           show_train_animation=False):
+    if show_train_animation:
+        plt.ion()
+
+    train_loader, test_loader = load_original_cifar_dataset(
+        data_root, batch_size, device
+    )
+
+    train_ss_fc(
+        model,
+        device,
+        train_loader,
+        test_loader,
+        batch_func,
+        task_name,
+        epochs,
+        lr,
+        print_freq=print_freq,
+        show_animation=show_train_animation,
+        weights_path=weights_path
+    )
+
+    if show_train_animation:
+        plt.ioff()
+        plt.show()
+
+
 def main(model_name,
-         dataset_path,
-         show_graphs,
+         data_root,
+         dset_paths,
          train_ss_layer,
          batch_size,
          epochs,
          lr,
          print_freq,
-         reevaluate_domains,
-         use_rand_labels_eval,
-         temp_file_path=TEMP_PATH_DEFAULT,
+         recalculate_results,
+         results_path=RESULTS_PATH_DEFAULT,
          device=DEVICE,
          weights_path=WEIGHTS_PATH_DEFAULT,
-         show_train_animation=True):
-    if show_train_animation:
-        plt.ion()
+         show_train_animation=False):
 
-    if dataset_path.endswith('/'):
-        dataset_path = dataset_path[:-1]
+    data_root = Path(data_root)
+    results_path = Path(results_path)
+    dset_paths = [Path(i) for i in dset_paths]
+    weights_path = Path(weights_path)
 
     task_name = "rotation"
 
     # Get the model given the input parameters.
-    best_ss_weights_exists = os.path.exists(f"{weights_path}/{model_name}/{task_name}/best.pt")
+    best_ss_weights_exists = (weights_path / model_name / task_name / "best.pt").exists()
     model = get_model(model_name, task_name, 4, device, not train_ss_layer and best_ss_weights_exists)
 
     # Train the model if required
     if train_ss_layer or not best_ss_weights_exists:
-        ss_batch_func = lambda inp_batch: rotate_batch(inp_batch, "rand")
-        train_loader, test_loader = load_original_cifar_dataset(
-            device,
-            batch_size,
-            dataset_path
-        )
+        train_original_cifar10(data_root,
+                               model,
+                               task_name,
+                               ss_batch_func,
+                               batch_size,
+                               epochs,
+                               lr,
+                               print_freq,
+                               weights_path,
+                               device=DEVICE,
+                               show_train_animation=show_train_animation)
 
-        train_ss_fc(
-            model,
-            device,
-            train_loader,
-            test_loader,
-            ss_batch_func,
-            task_name,
-            epochs,
-            lr,
-            print_freq=print_freq,
-            figure_save_dir=weights_path,
-            show_animation=show_train_animation
-        )
-
-
-    if not os.path.exists(f"{temp_file_path}/{model_name}/{task_name}"):
-        os.makedirs(f"{temp_file_path}/{model_name}/{task_name}")
-
-    label_method = "rand" if use_rand_labels_eval else "expand"
-    ss_predictor_func = lambda dataloader, model_m: rotation_pred(dataloader,
-                                                                  model_m,
-                                                                  device,
-                                                                  label_method=label_method)
-
-    # Calculate task accuracy on training_datasets
-    if reevaluate_domains or train_ss_layer or \
-            not os.path.exists(f"{temp_file_path}/{model_name}/{task_name}/train_data.npy") or \
-            not best_ss_weights_exists:
-        train_collection = DatasetCollection("train_data", f"{dataset_path}/train_data", DEFAULT_DATASET_COND)
-        train_collection.eval_datasets(model,
-                                     temp_file_path,
-                                     TRANSFORM,
-                                     ss_predictor_func,
-                                     task_name
-                                     )
-
-    if reevaluate_domains or train_ss_layer or \
-            not os.path.exists(f"{temp_file_path}/{model_name}/{task_name}/val_sets.npy") or \
-            not best_ss_weights_exists:
-        val_collection = DatasetCollection("val_sets", f"{dataset_path}/val_sets", DEFAULT_DATASET_COND)
-        val_collection.eval_datasets(model,
-                                     temp_file_path,
-                                     TRANSFORM,
-                                     ss_predictor_func,
-                                     task_name
-                                     )
-
-    print(
-        f"===> Linear Regression model for rotation accuracy method with model: {model_name}"
-    )
-    train_x = np.load(f"{temp_file_path}/{model_name}/{task_name}/train_data.npy") * 100
-    train_y = np.load(f"{temp_file_path}/{model_name}/classification/train_data.npy") * 100
-    val_x = np.load(f"{temp_file_path}/{model_name}/{task_name}/val_sets.npy") * 100
-    val_y = np.load(f"{temp_file_path}/{model_name}/classification/val_sets.npy") * 100
-    if show_train_animation:
-        plt.ioff()
-        plt.show()
-
-    fit_lr(train_x,
-           train_y,
-           val_x,
-           val_y,
-           task_name.capitalize(),
-           model_name,
-           show_graphs=show_graphs,
-           save_graphs_dir=f"{temp_file_path}/{model_name}/{task_name}")
+    generate_results(model_name,
+                     task_name,
+                     data_root,
+                     results_path,
+                     dset_paths,
+                     4,
+                     ss_predictor_func,
+                     recalculate_results,
+                     device)
 
 
 if __name__ == "__main__":
     ensure_cwd()
-    args = parser.parse_args()
-    main(args.model,
-         args.dataset_path,
-         args.show_graphs,
-         args.train_ss_layer,
-         args.batch_size,
-         args.epochs,
-         args.lr,
-         args.print_freq,
-         args.reevaluate_domains,
-         args.use_rand_labels_eval)
