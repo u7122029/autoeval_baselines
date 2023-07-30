@@ -10,7 +10,7 @@ from utils import fit_lr, DEVICE, VALID_MODELS
 if __name__ == "__main__":
     temp_file_path = "../temp"
 
-    train_dataloader, test_dataloader = load_original_cifar_dataset(DEVICE, 64, "data")
+    train_dataloader, test_dataloader = load_original_cifar_dataset(DEVICE, 64, "data") # TODO: Change this to default dataset path.
     val_sets = sorted(["cifar10-f-32", "cifar-10.1-c", "cifar-10.1"])
     df_dict = {
         "rotation": {

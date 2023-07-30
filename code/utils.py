@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from itertools import permutations
 
@@ -12,7 +11,7 @@ from sklearn.metrics import mean_squared_error, r2_score
 from tabulate import tabulate
 from models.model import Model
 from tqdm import tqdm
-from training_utils import get_model
+from models import get_model
 
 # PATHS
 TEMP_PATH_DEFAULT = "../temp"
@@ -61,30 +60,12 @@ VALID_MODELS = [
     "obc"  # rotation, jigsaw done.
 ]
 
+VALID_TASK_NAMES = [
+    "rotation",
+    "classification"  # TODO: Add jigsaw later.
+]
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
-
-class AverageMeter(object):
-    """Computes and stores the average and current value"""
-
-    def __init__(self):
-        self.count = None
-        self.sum = None
-        self.avg = None
-        self.val = None
-        self.reset()
-
-    def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
-
-    def update(self, val, n=1):
-        self.val = val
-        self.sum += val * n
-        self.count += n
-        self.avg = self.sum / self.count
 
 
 class CIFAR10NP(torch.utils.data.Dataset):
@@ -173,13 +154,6 @@ def construct_permutation_mappings(grid_length, num_out_perms=None):
     return out
 
 
-def adjust_learning_rate(optimizer, epoch, lr):
-    """Sets the learning rate to the initial LR decayed by 10 after 8 and 14 epochs"""
-    lr = lr * (0.1 ** (epoch // 8)) * (0.1 ** (epoch // 14))
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-
-
 def accuracy(output, target, topk=(1,)):
     """
     Computes the precision@model for the specified values of model
@@ -230,36 +204,6 @@ def generate_results(model_name,
                         recalculate_results)
 
 
-def generate_graph(train_results_path: Path,
-                   val_results_path: Path,
-                   x_task: str,
-                   y_task: str,
-                   model_name: str,
-                   output_path: Path,
-                   results_root: Path = RESULTS_PATH_DEFAULT,
-                   show_graphs=False
-                   ):
-    print(
-        f"===> Linear Regression model for {y_task} vs {x_task} with model: {model_name}"
-    )
-    train_x = np.load(str(results_root / "raw_findings" / train_results_path / f"{model_name}_{x_task}.npy")) * 100
-    train_y = np.load(str(results_root / "raw_findings" / train_results_path / f"{model_name}_{y_task}.npy")) * 100
-    val_x = np.load(str(results_root / "raw_findings" / val_results_path / f"{model_name}_{x_task}.npy")) * 100
-    val_y = np.load(str(results_root / "raw_findings" / val_results_path / f"{model_name}_{y_task}.npy")) * 100
-
-    title = f"{y_task} vs. {x_task} ({model_name})"
-
-    fit_lr(train_x,
-           train_y,
-           val_x,
-           val_y,
-           title,
-           x_task,
-           y_task,
-           show_graphs=show_graphs,
-           output=output_path)
-
-
 def fit_lr(train_x,
            train_y,
            val_x,
@@ -268,6 +212,7 @@ def fit_lr(train_x,
            x_task: str,
            y_task: str,
            show_graphs: bool = False,
+           results_root: Path = RESULTS_PATH_DEFAULT,
            output: Path = None):
     lr_train = LinearRegression()
     lr_train.fit(train_x.reshape(-1, 1), train_y)
@@ -307,7 +252,9 @@ def fit_lr(train_x,
     plt.plot(val_x.reshape(-1, 1), lr_val_val_y_hat, "r", label="Exterior Domain")
     plt.legend(loc="best")
     if output:
-        plt.savefig(str(output), format="svg")
+        p = results_root / output
+        p.parents[0].mkdir(parents=True, exist_ok=True)
+        plt.savefig(str(results_root / output), format="svg")
 
     """plt.figure()
     plt.title(f"Classification Acc. vs {task_name} Acc. ({model_name}) - Exterior Domain")
@@ -324,10 +271,12 @@ def fit_lr(train_x,
         plt.show()
 
     plt.close("all")
-    return lr_train_rmse_loss_train, lr_val_rmse_loss_val, lr_train_rmse_loss_val, lr_train_r2_train, lr_val_r2_val, lr_train_r2_val
+    return lr_train_rmse_loss_train, lr_val_rmse_loss_val, lr_train_rmse_loss_val, lr_train_r2_train, lr_val_r2_val, \
+        lr_train_r2_val
 
 
-def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func, device=DEVICE, recalculate=False):
+def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func, device=DEVICE,
+                    recalculate=False):
     if not recalculate and (temp_root / f"{model.model_name}_{name}.npy").exists():
         return
 

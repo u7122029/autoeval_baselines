@@ -1,23 +1,16 @@
 import argparse
-import os
 import sys
-
 sys.path.append(".")
 
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
 from pathlib import Path
 
 from utils import (
-    TRANSFORM,
-    fit_lr,
     ensure_cwd,
     VALID_MODELS,
     DEVICE,
-    TEMP_PATH_DEFAULT,
     RESULTS_PATH_DEFAULT,
-    DEFAULT_DATASET_COND,
     DATA_PATH_DEFAULT,
     BATCH_SIZE,
     PRINT_FREQ,
@@ -26,17 +19,10 @@ from utils import (
     WEIGHTS_PATH_DEFAULT
 )
 
-from training_utils import (
-    load_original_cifar_dataset,
-    get_model,
-    train_ss_fc
-)
+from training_utils import train_original_cifar10
+from utils import generate_results
 
-from utils import (
-    generate_results
-)
 
-from models.model import Model
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Rotation Prediction")
 parser.add_argument(
@@ -45,13 +31,6 @@ parser.add_argument(
     type=str,
     help="the model used to run this script",
     choices=VALID_MODELS
-)
-parser.add_argument(
-    "--dataset-path",
-    required=False,
-    default=DATA_PATH_DEFAULT,
-    type=str,
-    help="path containing all datasets (training and validation)",
 )
 parser.add_argument(
     "--batch_size",
@@ -66,13 +45,6 @@ parser.add_argument(
     required=False,
     default=False,
     help="True if the model's Fully Connected (FC) layer for jigsaw prediction should be trained, and False otherwise."
-)
-parser.add_argument(
-    "--temp-path",
-    required=False,
-    default=TEMP_PATH_DEFAULT,
-    type=str,
-    help="The path to store temporary files."
 )
 parser.add_argument(
     '--print-freq',
@@ -93,26 +65,54 @@ parser.add_argument(
     help='Number of epochs for training.'
 )
 parser.add_argument(
-    '--show-graphs',
+    '--show-train-animation',
     action="store_true",
     default=False,
-    help='True if the graphs of classification accuracy vs jigsaw accuracy should be shown after RMSE calculation'
+    help='Shows the loss curves during training.'
 )
 parser.add_argument(
     '--use-rand-labels-eval',
     action="store_true",
     default=False,
-    help='True if the self-supervision labels during evaluation on the interior and exterior domains should be completely randomised.'
+    help='True if the self-supervision labels during evaluation on the interior and exterior domains should be '
+         'completely randomised.'
 )
 parser.add_argument(
-    '--reevaluate-domains',
+    "--dsets",
+    required=True,
+    nargs="*",
+    help="List of relative train dataset roots, space separated."
+)
+parser.add_argument(
+    "--data-root",
+    required=False,
+    default=DATA_PATH_DEFAULT,
+    type=str,
+    help="path containing all datasets (training and validation)"
+)
+parser.add_argument(
+    "--results-path",
+    required=False,
+    default=RESULTS_PATH_DEFAULT,
+    type=str,
+    help="The path to store results."
+)
+parser.add_argument(
+    "--weights-path",
+    required=False,
+    default=WEIGHTS_PATH_DEFAULT,
+    type=str,
+    help="The path to store the model weights."
+)
+parser.add_argument(
+    "--recalculate-results",
     action="store_true",
-    default=False,
-    help='True if the model should be reevaluated on the interior and exterior domain datasets.'
+    required=False,
+    help="Whether the task should be recalculated over the given dataset paths."
 )
 
 
-# Assumes that tensor is (nchannels, height, width)
+# Assumes that tensor is (n_channels, height, width)
 def tensor_rot_90(x):
     return x.flip(2).transpose(1, 2)
 
@@ -173,46 +173,6 @@ def rotation_pred(dataloader, model, device, label_method="expand"):
 
 # label_method = "rand" if use_rand_labels_eval else "expand"
 ss_batch_func = lambda inp_batch: rotate_batch(inp_batch, "rand")
-ss_predictor_func = lambda dataloader, model, device: rotation_pred(dataloader,
-                                                                    model,
-                                                                    device)
-
-
-def train_original_cifar10(data_root: Path,
-                           model: Model,
-                           task_name: str,
-                           batch_func,
-                           batch_size: int,
-                           epochs: int,
-                           lr: float,
-                           print_freq: int,
-                           weights_path: Path,
-                           device=DEVICE,
-                           show_train_animation=False):
-    if show_train_animation:
-        plt.ion()
-
-    train_loader, test_loader = load_original_cifar_dataset(
-        data_root, batch_size, device
-    )
-
-    train_ss_fc(
-        model,
-        device,
-        train_loader,
-        test_loader,
-        batch_func,
-        task_name,
-        epochs,
-        lr,
-        print_freq=print_freq,
-        show_animation=show_train_animation,
-        weights_path=weights_path
-    )
-
-    if show_train_animation:
-        plt.ioff()
-        plt.show()
 
 
 def main(model_name,
@@ -228,7 +188,6 @@ def main(model_name,
          device=DEVICE,
          weights_path=WEIGHTS_PATH_DEFAULT,
          show_train_animation=False):
-
     data_root = Path(data_root)
     results_path = Path(results_path)
     dset_paths = [Path(i) for i in dset_paths]
@@ -238,14 +197,14 @@ def main(model_name,
 
     # Get the model given the input parameters.
     best_ss_weights_exists = (weights_path / model_name / task_name / "best.pt").exists()
-    model = get_model(model_name, task_name, 4, device, not train_ss_layer and best_ss_weights_exists)
 
     # Train the model if required
     if train_ss_layer or not best_ss_weights_exists:
         train_original_cifar10(data_root,
-                               model,
+                               model_name,
+                               4,
                                task_name,
-                               ss_batch_func,
+                               rotation_pred,
                                batch_size,
                                epochs,
                                lr,
@@ -260,10 +219,24 @@ def main(model_name,
                      results_path,
                      dset_paths,
                      4,
-                     ss_predictor_func,
+                     rotation_pred,
                      recalculate_results,
                      device)
 
 
 if __name__ == "__main__":
     ensure_cwd()
+    args = parser.parse_args()
+    main(args.model,
+         args.data_root,
+         args.dsets,
+         args.train_ss_layer,
+         args.batch_size,
+         args.epochs,
+         args.lr,
+         args.print_freq,
+         args.recalculate_results,
+         results_path=args.results_path,
+         device=DEVICE,
+         weights_path=args.weights_path,
+         show_train_animation=args.show_train_animation)

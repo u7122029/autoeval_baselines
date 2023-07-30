@@ -6,32 +6,52 @@ import torch.nn.functional
 import torch.utils.data
 import torchvision.datasets as datasets
 
-from models.alexnet import AlexNet_SS
-from models.densenet import DenseNet_SS
-from models.inceptionv3 import Inceptionv3_SS
-from models.lenet5 import LeNet5_SS
-from models.linear import Linear_SS
-from models.mobilenetv2 import MobileNet_SS
-from models.obc import OBC_SS
-from models.repvgg import RepVGG_SS
-from models.resnet import ResNet_SS
-from models.shufflenet import ShuffleNet_SS
 from utils import (
-    AverageMeter,
-    adjust_learning_rate,
     DEVICE,
     EPOCHS,
     MOMENTUM,
     WEIGHT_DECAY,
     LEARN_RATE,
     PRINT_FREQ,
-    RESULTS_PATH_DEFAULT,
     WEIGHTS_PATH_DEFAULT,
     TRANSFORM
 )
 
 from pathlib import Path
-from models.model import Model
+from models import (
+    Model,
+    get_model
+)
+
+
+class AverageMeter(object):
+    """Computes and stores the average and current value"""
+
+    def __init__(self):
+        self.count = None
+        self.sum = None
+        self.avg = None
+        self.val = None
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+
+def adjust_learning_rate(optimizer, epoch, lr):
+    """Sets the learning rate to the initial LR decayed by 10 after 8 and 14 epochs"""
+    lr = lr * (0.1 ** (epoch // 8)) * (0.1 ** (epoch // 14))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 
 def load_original_cifar_dataset(data_root: Path, batch_size, device=DEVICE, transform=TRANSFORM):
@@ -57,52 +77,6 @@ def load_original_cifar_dataset(data_root: Path, batch_size, device=DEVICE, tran
     )
 
     return train_loader, test_loader
-
-
-def get_model(name, task, num_ss_classes, device=DEVICE, load_best_fc=True):
-    """
-
-    :param name: The name of the backbone model
-    :param task: The self-supervision task
-    :param num_ss_classes: The number of classes in the self-supervision task
-    :param device: The device the model should run on
-    :param load_best_fc: True if the best model weights should be loaded, and false otherwise.
-    :return: Instance of the model, with backbone model weights preloaded.
-    """
-
-    if "resnet" in name:
-        version = int(name.replace("resnet", ""))
-        model = ResNet_SS(version, num_ss_classes)
-    elif name == "repvgg":
-        model = RepVGG_SS(num_ss_classes)
-    elif name == "mobilenetv2":
-        model = MobileNet_SS(num_ss_classes)
-    elif "densenet" in name:
-        version = int(name.replace("densenet", ""))
-        model = DenseNet_SS(version, num_ss_classes)
-    elif name == "shufflenet":
-        model = ShuffleNet_SS(num_ss_classes)
-    elif name == "inception_v3":
-        model = Inceptionv3_SS(num_ss_classes)
-    elif name == "linear":
-        model = Linear_SS(num_ss_classes)
-    elif name == "alexnet":
-        model = AlexNet_SS(num_ss_classes)
-    elif name == "lenet5":
-        model = LeNet5_SS(num_ss_classes)
-    elif name == "obc":
-        model = OBC_SS(num_ss_classes, device)
-    else:
-        # Absolutely impossible case since this is covered by argparse.
-        # If this NameError occurs please check the choices in the arg parser.
-        raise NameError(f"Model name {name} does not exist.")
-
-    if load_best_fc:
-        # If we are not training the self-supervision FC layer, we should try to load in its best checkpoint
-        model.load_ss_fc(f"../model_weights/{name}/{task}/best.pt", is_local=True)
-
-    model.to(device)
-    return model
 
 
 def train_epoch(train_loader, ss_batch_func, model, device, criterion, optimizer, epoch, print_freq):
@@ -323,3 +297,44 @@ def train_ss_fc(
     plt.close("all")
 
     print(f'Best {ss_task_name} accuracy (test set):', best_ss_acc)
+
+
+def train_original_cifar10(data_root: Path,
+                           model_name: str,
+                           num_ss_out: int,
+                           task_name: str,
+                           batch_func,
+                           batch_size: int,
+                           epochs: int,
+                           lr: float,
+                           print_freq: int,
+                           weights_path: Path,
+                           device=DEVICE,
+                           show_train_animation=False):
+
+    if show_train_animation:
+        plt.ion()
+
+    model = get_model(model_name, task_name, num_ss_out, device, False)
+
+    train_loader, test_loader = load_original_cifar_dataset(
+        data_root, batch_size, device
+    )
+
+    train_ss_fc(
+        model,
+        device,
+        train_loader,
+        test_loader,
+        batch_func,
+        task_name,
+        epochs,
+        lr,
+        print_freq=print_freq,
+        show_animation=show_train_animation,
+        weights_path=weights_path
+    )
+
+    if show_train_animation:
+        plt.ioff()
+        plt.show()

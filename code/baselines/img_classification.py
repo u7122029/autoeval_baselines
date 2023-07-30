@@ -39,13 +39,6 @@ parser.add_argument(
     help="path containing all datasets (training and validation)"
 )
 parser.add_argument(
-    "--temp-path",
-    required=False,
-    default=TEMP_PATH_DEFAULT,
-    type=str,
-    help="The path to store temporary files."
-)
-parser.add_argument(
     "--results-path",
     required=False,
     default=RESULTS_PATH_DEFAULT,
@@ -71,11 +64,8 @@ def calculate_acc(dataloader, model, device=DEVICE):
     return np.mean(correct)
 
 
-pred_func = lambda dataloader, model_m, device: calculate_acc(dataloader, model_m, device)
-
-
-def main(*args, **kwargs):
-    generate_results(*args, **kwargs)
+def main(*ags, **kwargs):
+    generate_results(*ags, **kwargs)
 
 
 if __name__ == "__main__":
@@ -87,4 +77,4 @@ if __name__ == "__main__":
          args.results_path,
          args.dsets,
          4,
-         pred_func)
+         calculate_acc)
