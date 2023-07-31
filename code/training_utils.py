@@ -79,7 +79,14 @@ def load_original_cifar_dataset(data_root: Path, batch_size, device=DEVICE, tran
     return train_loader, test_loader
 
 
-def train_epoch(train_loader, ss_batch_func, model, device, criterion, optimizer, epoch, print_freq):
+def train_epoch(train_loader: torch.utils.data.DataLoader,
+                ss_batch_func,
+                model,
+                device,
+                criterion,
+                optimizer,
+                epoch,
+                print_freq):
     """
     :param train_loader: The training dataloader.
     :param ss_batch_func: Function to transform each batch from the training dataloader to suit the self-supervision task.
@@ -89,7 +96,7 @@ def train_epoch(train_loader, ss_batch_func, model, device, criterion, optimizer
     :param optimizer: The optimiser.
     :param epoch: The epoch number.
     :param print_freq: The frequency at which the losses should be printed.
-    :return:
+    :return: The losses
     """
 
     """Train for one epoch on the training set"""

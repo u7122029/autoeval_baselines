@@ -190,7 +190,7 @@ def generate_results(model_name,
     dset_paths = [Path(i) for i in dset_paths]
 
     # load the model
-    model = get_model(model_name, task_name, model_ss_out_size, device, load_best_fc=False)
+    model = get_model(model_name, task_name, model_ss_out_size, device, load_best_fc=True)
     model.eval()
 
     for dset_collection_root in dset_paths:
@@ -277,7 +277,8 @@ def fit_lr(train_x,
 
 def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func, device=DEVICE,
                     recalculate=False):
-    if not recalculate and (temp_root / f"{model.model_name}_{name}.npy").exists():
+    outfile_path = temp_root / f"{model.model_name}.npz"
+    if not recalculate and outfile_path.exists() and name in np.load(str(outfile_path)):
         return
 
     if (data_root / "data.npy").exists() and (data_root / "labels.npy").exists():
@@ -286,25 +287,34 @@ def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, p
         acc = evaluator.evaluate(model, predictor_func, device)
 
         temp_root.mkdir(parents=True, exist_ok=True)
-        np.save(str(temp_root / f"{model.model_name}_{name}.npy"), np.array([acc], dtype=np.float64))
+
+        data = {}
+        if outfile_path.exists():
+            data = dict(np.load(str(outfile_path)))
+        data[name] = np.array([(acc, str(data_root))])
+        np.savez(str(outfile_path), **data)
         return
 
     # Visit all subdirs
     print(f"Current data collection: {str(data_root)}\tCurrent temp path: {str(temp_root)}")
     out = []
-    dirs = sorted(data_root.iterdir())
-    for path in tqdm(dirs, total=len(list(dirs))):  # Sorting ensures order.
+    dirs = sorted(data_root.iterdir())  # Sorting ensures order.
+    for path in tqdm(dirs, total=len(list(dirs))):
         if not path.is_dir():
             # Skip files.
             continue
         entity = path.parts[-1]
         dataset_recurse(data_root / entity, temp_root / entity, name, model, predictor_func)
-        loaded = np.load(str(temp_root / entity / f"{model.model_name}_{name}.npy"))
+        loaded = np.load(str(temp_root / entity / f"{model.model_name}.npz"))[name]
         out.append(loaded)
     out = np.concatenate(out)
 
     temp_root.mkdir(parents=True, exist_ok=True)
-    np.save(str(temp_root / f"{model.model_name}_{name}.npy"), out)
+    data = {}
+    if outfile_path.exists():
+        data = dict(np.load(str(outfile_path)))
+    data[name] = out
+    np.savez(str(outfile_path), **data)
 
 
 def ensure_cwd():

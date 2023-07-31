@@ -73,22 +73,22 @@ def main(train_results_paths: list[str],
 
     print(f"===> Linear Regression model for {y_task} vs {x_task} with model: {model_name}")
     train_x = np.concatenate(
-        [np.load(str(results_root / "raw_findings" / train_results_path / f"{model_name}_{x_task}.npy")) * 100.0
+        [np.array(np.load(str(results_root / "raw_findings" / train_results_path / f"{model_name}.npz"))[x_task][:, 0], dtype=np.float64) * 100.0
          for train_results_path in train_results_paths])
 
     train_y = np.concatenate(
-        [np.load(str(results_root / "raw_findings" / train_results_path / f"{model_name}_{y_task}.npy")) * 100.0
+        [np.array(np.load(str(results_root / "raw_findings" / train_results_path / f"{model_name}.npz"))[y_task][:, 0], dtype=np.float64) * 100.0
          for train_results_path in train_results_paths])
 
     val_x = np.concatenate(
-        [np.load(str(results_root / "raw_findings" / val_results_path / f"{model_name}_{x_task}.npy")) * 100.0
+        [np.array(np.load(str(results_root / "raw_findings" / val_results_path / f"{model_name}.npz"))[x_task][:, 0], dtype=np.float64) * 100.0
          for val_results_path in val_results_paths])
 
     val_y = np.concatenate(
-        [np.load(str(results_root / "raw_findings" / val_results_path / f"{model_name}_{y_task}.npy")) * 100.0
+        [np.array(np.load(str(results_root / "raw_findings" / val_results_path / f"{model_name}.npz"))[y_task][:, 0], dtype=np.float64) * 100.0
          for val_results_path in val_results_paths])
 
-    title = f"{y_task} vs. {x_task} ({model_name})"
+    title = f"{y_task.capitalize()} vs. {x_task.capitalize()} ({model_name})"
 
     fit_lr(train_x,
            train_y,
