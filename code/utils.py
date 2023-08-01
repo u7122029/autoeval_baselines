@@ -184,13 +184,29 @@ def generate_results(model_name,
                      model_ss_out_size,
                      predictor_func,
                      recalculate_results=False,
-                     device=DEVICE):
+                     device=DEVICE,
+                     load_best_fc=True):
+    """
+    Evaluates a given model over a specified task, storing the results in the given results path.
+    :param model_name: The name of the model to load.
+    :param task_name: The name of the task.
+    :param data_root: The root path of all datasets.
+    :param results_path: The root path of all results.
+    :param dset_paths: The relative paths of each dataset.
+    :param model_ss_out_size: The size of the self-supervised output layer.
+    :param predictor_func: The predictor function.
+    :param recalculate_results: True if the results should be recalculated, and False otherwise.
+    :param device: The device the model and datasets should be run on.
+    :param load_best_fc: True if the model should have its optimal weights loaded for a self-supervised task, and false
+    otherwise (eg: for image classification).
+    :return: None.
+    """
     data_root = Path(data_root)
     results_path = Path(results_path)
     dset_paths = [Path(i) for i in dset_paths]
 
     # load the model
-    model = get_model(model_name, task_name, model_ss_out_size, device, load_best_fc=True)
+    model = get_model(model_name, task_name, model_ss_out_size, device, load_best_fc=load_best_fc)
     model.eval()
 
     for dset_collection_root in dset_paths:
@@ -202,6 +218,17 @@ def generate_results(model_name,
                         predictor_func,
                         device,
                         recalculate_results)
+
+
+def r2_adjusted(score, n, f):
+    """
+    Computes the R^2 adjusted score.
+    :param score: The original R^2 score
+    :param n: The number of datapoints.
+    :param f: The number of independent variables.
+    :return: The adjusted R^2 score.
+    """
+    return 1 - (1-score)*(n-1)/(n-f-1)
 
 
 def fit_lr(train_x,
@@ -230,17 +257,27 @@ def fit_lr(train_x,
 
     lr_val_rmse_loss_val = mean_squared_error(y_true=val_y, y_pred=lr_val_val_y_hat, squared=False)
 
+    # Scoring.
     lr_train_r2_train = r2_score(train_y, lr_train_train_y_hat)
     lr_train_r2_val = r2_score(val_y, lr_train_val_y_hat)
-
     lr_val_r2_val = r2_score(val_y, lr_val_val_y_hat)
+
+    lr_train_r2_train_adjusted = r2_adjusted(lr_train_r2_train, len(train_y), 1)
+    lr_train_r2_val_adjusted = r2_adjusted(lr_train_r2_val, len(val_y), 1)
+    lr_val_r2_val_adjusted = r2_adjusted(lr_val_r2_val, len(val_y), 1)
 
     print("Displaying Metrics")
 
     grid = [["Metric", "Training Set", "Validation Set (Val LR)", "Validation Set (Train LR)"],
             ["RMSE", f"{lr_train_rmse_loss_train:.4f}", f"{lr_val_rmse_loss_val:.4f}", f"{lr_train_rmse_loss_val:.4f}"],
-            ["R^2", f"{lr_train_r2_train:.4f}", f"{lr_val_r2_val:.4f}", f"{lr_train_r2_val:.4f}"]]
+            ["R^2", f"{lr_train_r2_train:.4f}", f"{lr_val_r2_val:.4f}", f"{lr_train_r2_val:.4f}"],
+            ["R^2 Adjusted", f"{lr_train_r2_train_adjusted:.4f}", f"{lr_val_r2_val_adjusted:.4f}", f"{lr_train_r2_val_adjusted:.4f}"]]
     print(tabulate(grid, headers="firstrow", tablefmt="psql"))
+
+
+    all_x = np.concatenate([train_x, val_x])
+    all_pred_y_train = lr_train.predict(all_x.reshape(-1, 1))
+    all_pred_y_val = lr_val.predict(all_x.reshape(-1, 1))
 
     plt.figure()
     plt.title(title)
@@ -248,8 +285,8 @@ def fit_lr(train_x,
     plt.ylabel(f"{y_task.capitalize()} Accuracy")
     plt.scatter(train_x.reshape(-1, 1), train_y, marker="+", linewidths=0.75, color="blue")
     plt.scatter(val_x.reshape(-1, 1), val_y, marker="x", linewidths=0.5, color="red")
-    plt.plot(train_x.reshape(-1, 1), lr_train_train_y_hat, "b", label="Interior Domain")
-    plt.plot(val_x.reshape(-1, 1), lr_val_val_y_hat, "r", label="Exterior Domain")
+    plt.plot(all_x.reshape(-1, 1), all_pred_y_train, "b", label="Interior Domain")
+    plt.plot(all_x.reshape(-1, 1), all_pred_y_val, "r", label="Exterior Domain")
     plt.legend(loc="best")
     if output:
         p = results_root / output

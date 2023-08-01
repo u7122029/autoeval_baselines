@@ -65,7 +65,7 @@ def calculate_acc(dataloader, model, device=DEVICE):
 
 
 def main(*ags, **kwargs):
-    generate_results(*ags, **kwargs)
+    generate_results(*ags, **kwargs, load_best_fc=False)
 
 
 if __name__ == "__main__":
