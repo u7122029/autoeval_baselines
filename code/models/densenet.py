@@ -24,3 +24,7 @@ class DenseNet_SS(Model, nn.Module):
         x = F.relu(x, inplace=True)
         x = F.adaptive_avg_pool2d(x, (1, 1)).view(x.size(0), -1)
         return self.fc(x), self.fc_ss(x)
+
+if __name__ == "__main__":
+    d = DenseNet_SS()
+    print(d.model)

@@ -140,12 +140,7 @@ From [huyvnphan/PyTorch_CIFAR10](https://github.com/u7122029/PyTorch_CIFAR10):
 
 - All versions of DenseNet,
 - Inception_v3,
-
-From [u7122029/pytorch-cifar10](https://github.com/u7122029/pytorch-cifar10)
-
-- AlexNet,
 - LeNet5,
-- OBC,
 - Linear
 
 We made forks of each repository listed to upload the pretrained weights to the releases section, and we give full

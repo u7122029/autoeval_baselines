@@ -6,7 +6,7 @@ from models.model import Model
 class Linear_SS(Model, nn.Module):
     def __init__(self, num_ss_classes=4):
         nn.Module.__init__(self)
-        Model.__init__(self, num_ss_classes, "linear", "u7122029/pytorch-cifar10", "linear", force_reload=False)
+        Model.__init__(self, num_ss_classes, "linear", "u7122029/pytorch_CIFAR10", "linear", force_reload=True)
 
         # The linear model does not have a feature extraction backbone.
 
@@ -21,3 +21,7 @@ class Linear_SS(Model, nn.Module):
         out_class = self.fc(x)
         out_ss = self.fc_ss(x)
         return out_class, out_ss
+
+if __name__ == "__main__":
+    mdl = Linear_SS()
+    print(mdl)

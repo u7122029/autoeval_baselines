@@ -281,12 +281,16 @@ def fit_lr(train_x,
 
     plt.figure()
     plt.title(title)
+    plt.grid()
     plt.xlabel(f"{x_task.capitalize()} Accuracy")
     plt.ylabel(f"{y_task.capitalize()} Accuracy")
-    plt.scatter(train_x.reshape(-1, 1), train_y, marker="+", linewidths=0.75, color="blue")
-    plt.scatter(val_x.reshape(-1, 1), val_y, marker="x", linewidths=0.5, color="red")
-    plt.plot(all_x.reshape(-1, 1), all_pred_y_train, "b", label="Interior Domain")
-    plt.plot(all_x.reshape(-1, 1), all_pred_y_val, "r", label="Exterior Domain")
+    plt.scatter(val_x.reshape(-1, 1), val_y, marker="x", alpha=0.5, linewidths=0.5, color="#f08080",
+                label=r"$\bf{ExD}$" + " Datasets")
+    plt.scatter(train_x.reshape(-1, 1), train_y, marker="+", alpha=0.5, linewidths=0.75, color="#A7C7E7",
+                label=r"$\bf{InD}$" + " Datasets")
+    plt.plot(all_x.reshape(-1, 1), all_pred_y_train, "b", label=r"$\bf{In}$" + "terior " + r"$\bf{D}$" + "omain Fit")
+    plt.plot(all_x.reshape(-1, 1), all_pred_y_val, "r", label=r"$\bf{Ex}$" + "terior " + r"$\bf{D}$" + "omain Fit")
+
     plt.legend(loc="best")
     if output:
         p = results_root / output
@@ -333,15 +337,17 @@ def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, p
         return
 
     # Visit all subdirs
-    print(f"Current data collection: {str(data_root)}\tCurrent temp path: {str(temp_root)}")
+    #print(f"Current data collection: {str(data_root)}\tCurrent temp path: {str(temp_root)}")
     out = []
     dirs = sorted(data_root.iterdir())  # Sorting ensures order.
-    for path in tqdm(dirs, total=len(list(dirs))):
+    progressbar = tqdm(dirs, total=len(list(dirs)))
+    for path in progressbar:
+        progressbar.set_postfix({"data_dir": str(data_root)})
         if not path.is_dir():
             # Skip files.
             continue
         entity = path.parts[-1]
-        dataset_recurse(data_root / entity, temp_root / entity, name, model, predictor_func)
+        dataset_recurse(data_root / entity, temp_root / entity, name, model, predictor_func, device, recalculate)
         loaded = np.load(str(temp_root / entity / f"{model.model_name}.npz"))[name]
         out.append(loaded)
     out = np.concatenate(out)
