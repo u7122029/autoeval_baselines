@@ -7,13 +7,22 @@ import torch.nn as nn
 
 
 class Model(ABC, nn.Module):
-    def __init__(self, num_ss_classes, model_name, repo, weights_name, pretrained=True, force_reload=False):
+    def __init__(self, num_ss_classes, model_name, repo, weights_name, **kwargs):
+        """
+        Constructor for Generic Model
+        :param num_ss_classes: The number of self-supervised classes, eg: 4 for rotation prediction.
+        :param model_name: The name of the model.
+        :param repo: The repository to download the weights.
+        :param weights_name: The name of the weights.
+        :param kwargs: Includes extra arguments for the torch.hub.load function such as
+        force_reload (bool), pretrained (bool) and dataset (mnist or cifar10).
+        """
         super().__init__()
         self.num_ss_classes = num_ss_classes
         self.model_name = model_name
 
         # load backbone + classification layer
-        self.model = torch.hub.load(repo, weights_name, pretrained=pretrained, force_reload=force_reload)
+        self.model = torch.hub.load(repo, weights_name, **kwargs)
 
         # Freeze backbone and classification layer
         for param in self.model.parameters():

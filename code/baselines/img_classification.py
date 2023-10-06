@@ -14,7 +14,8 @@ from utils import (
     DEVICE,
     TEMP_PATH_DEFAULT,
     DATA_PATH_DEFAULT,
-    RESULTS_PATH_DEFAULT
+    RESULTS_PATH_DEFAULT,
+    VALID_DATASETS
 )
 
 parser = argparse.ArgumentParser(description="AutoEval Baselines - Image Classification")
@@ -24,6 +25,13 @@ parser.add_argument(
     type=str,
     help="The classifier to run.",
     choices=VALID_MODELS
+)
+parser.add_argument(
+    "--dataset",
+    required=False,
+    default="cifar10",
+    help="The name of the dataset that should be used.",
+    choices=VALID_DATASETS
 )
 parser.add_argument(
     "--dsets",
@@ -71,10 +79,12 @@ def main(*ags, **kwargs):
 if __name__ == "__main__":
     ensure_cwd()
     args = parser.parse_args()
-    main(args.model,
+    main(args.dataset,
+         args.model,
          "classification",
          args.data_root,
          args.results_path,
          args.dsets,
          4,
-         calculate_acc)
+         calculate_acc,
+         recalculate_results=args.recalculate_results)

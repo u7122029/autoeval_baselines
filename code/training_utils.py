@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import torch.nn as nn
 import torch.nn.functional
 import torch.utils.data
+from torch.utils.data import ConcatDataset
 import torchvision.datasets as datasets
 
 from utils import (
@@ -14,7 +15,10 @@ from utils import (
     LEARN_RATE,
     PRINT_FREQ,
     WEIGHTS_PATH_DEFAULT,
-    TRANSFORM
+    TRANSFORM_CIFAR10,
+    TRANSFORM_MNIST,
+    TRANSFORM_SVHN,
+    TRANSFORM_MNIST_TRAIN
 )
 
 from pathlib import Path
@@ -54,9 +58,9 @@ def adjust_learning_rate(optimizer, epoch, lr):
         param_group['lr'] = lr
 
 
-def load_original_cifar_dataset(data_root: Path, batch_size, device=DEVICE, transform=TRANSFORM):
+def load_original_dataset(data_root: Path, batch_size, device=DEVICE, dataset_name="cifar10"):
     """
-    Load the original cifar-10 datasets.
+    Load an original dataset.
     :param data_root: The root path of all datasets.
     :param batch_size: The size of each batch.
     :param device: The device that the datasets should be on.
@@ -64,17 +68,35 @@ def load_original_cifar_dataset(data_root: Path, batch_size, device=DEVICE, tran
     :return: The training and testing datasets.
     """
 
-    kwargs = {'num_workers': 1, 'pin_memory': True} if device == "cuda" else {}
+    dl_kwargs = {'num_workers': 4, 'pin_memory': True} if device == "cuda" else {}
+    dl_kwargs.update({"batch_size": batch_size, "shuffle": True})
 
-    train_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(str(data_root), train=True, download=True, transform=transform),
-        batch_size=batch_size, shuffle=True, **kwargs
-    )
+    dset_kwargs = {"root": str(data_root), "download": True}
+    dset_kwargs_maps = {
+        "cifar10": {"transform": TRANSFORM_CIFAR10},
+        "mnist": {"transform": TRANSFORM_MNIST_TRAIN},
+        "svhn": {"transform": TRANSFORM_SVHN}
+    }
+    dset_kwargs.update(dset_kwargs_maps[dataset_name])
 
-    test_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(str(data_root), train=False, transform=transform),
-        batch_size=batch_size, shuffle=False, **kwargs
-    )
+    # Python does eager evaluation, not lazy. So we didn't put this conditional in a dictionary.
+    if dataset_name == "cifar10":
+        train_dataset = datasets.CIFAR10(train=True, **dset_kwargs)
+        test_dataset = datasets.CIFAR10(train=False, **dset_kwargs)
+    elif dataset_name == "mnist":
+        train_dataset = datasets.MNIST(train=True, **dset_kwargs)
+        test_dataset = datasets.MNIST(train=False, **dset_kwargs)
+    elif dataset_name == "svhn":
+        train_dataset = ConcatDataset([datasets.SVHN(split="train", **dset_kwargs),
+                                 datasets.SVHN(split="extra", **dset_kwargs)])
+        test_dataset = datasets.SVHN(split="test", **dset_kwargs)
+    else:
+        raise Exception(f"No dataset named {dataset_name}.")
+
+    train_loader = torch.utils.data.DataLoader(train_dataset, **dl_kwargs)
+
+    dl_kwargs["shuffle"] = False
+    test_loader = torch.utils.data.DataLoader(test_dataset, **dl_kwargs)
 
     return train_loader, test_loader
 
@@ -109,7 +131,6 @@ def train_epoch(train_loader: torch.utils.data.DataLoader,
 
     for i, (inp, _) in enumerate(train_loader):
         end = time.time()
-        # target = target.to(device)
         inp = inp.to(device)
 
         # Classification backbone frozen. Will always give 94.37% accuracy.
@@ -121,9 +142,6 @@ def train_epoch(train_loader: torch.utils.data.DataLoader,
         inputs_ssh, labels_ssh = inputs_ssh.to(device), labels_ssh.to(device)
         _, outputs_ssh = model(inputs_ssh)
         loss_ssh = criterion(outputs_ssh, labels_ssh)
-
-        # simply add two tasks' losses
-        # loss = loss_cls + loss_ssh
 
         # measure accuracy and record loss
         # prec1 = accuracy(output, target, topk=(1,))[0] # prec1 will always be the same.
@@ -162,7 +180,7 @@ def test_model(test_dataloader, model, device, ss_batch_func=None):
     correct = []
     losses = AverageMeter()
 
-    for batch_idx, (inputs, labels) in enumerate(test_dataloader):
+    for inputs, labels in test_dataloader:
         if ss_batch_func:
             inputs, labels = ss_batch_func(inputs)
 
@@ -183,7 +201,7 @@ def test_model(test_dataloader, model, device, ss_batch_func=None):
     return acc, losses
 
 
-def save_checkpoint(model: Model, weights_path: Path, is_best: bool, task_name: str):
+def save_checkpoint(model: Model, weights_path: Path, is_best: bool, task_name: str, dataset_name: str):
     """
     Saves model weights to disk.
     :param model: The model.
@@ -192,7 +210,7 @@ def save_checkpoint(model: Model, weights_path: Path, is_best: bool, task_name: 
     :param task_name: The name of the task.
     :return: None.
     """
-    directory = weights_path / model.model_name / task_name
+    directory = weights_path / model.model_name / dataset_name / task_name
     model.save_ss_fc(str(directory), "checkpoint.pt")
 
     if is_best:
@@ -212,7 +230,8 @@ def train_ss_fc(
         weight_decay=WEIGHT_DECAY,
         print_freq=PRINT_FREQ,
         show_animation=True,
-        weights_path=WEIGHTS_PATH_DEFAULT):
+        weights_path=WEIGHTS_PATH_DEFAULT,
+        dataset_name="cifar10"):
 
     weights_path = Path(weights_path)
     #results_path = Path(results_path)
@@ -241,7 +260,6 @@ def train_ss_fc(
                                 nesterov=True,
                                 weight_decay=weight_decay)
 
-    # best_class_acc = 0
     best_ss_acc = 0
 
     # Training loop.
@@ -294,19 +312,21 @@ def train_ss_fc(
             weights_path,
             is_best,
             ss_task_name,
+            dataset_name
         )
 
     if not show_animation:
         ax.plot(train_loss_x, train_loss_y, 'ro-', label="Train Loss")
         ax.plot(val_loss_x, val_loss_y, "bx-", label="Val Loss")
 
-    figure.savefig(weights_path / model.model_name / ss_task_name / "train.png", format="png")
+    figure.savefig(weights_path / model.model_name / dataset_name / ss_task_name / "train.png", format="png")
     plt.close("all")
 
     print(f'Best {ss_task_name} accuracy (test set):', best_ss_acc)
 
 
-def train_original_cifar10(data_root: Path,
+def train_original_dataset(dataset_name: str,
+                           data_root: Path,
                            model_name: str,
                            num_ss_out: int,
                            task_name: str,
@@ -322,10 +342,10 @@ def train_original_cifar10(data_root: Path,
     if show_train_animation:
         plt.ion()
 
-    model = get_model(model_name, task_name, num_ss_out, device, False)
+    model = get_model(model_name, task_name, num_ss_out, device, False, dataset_name, force_reload=True)
 
-    train_loader, test_loader = load_original_cifar_dataset(
-        data_root, batch_size, device
+    train_loader, test_loader = load_original_dataset(
+        data_root, batch_size, device, dataset_name
     )
 
     train_ss_fc(
@@ -339,7 +359,8 @@ def train_original_cifar10(data_root: Path,
         lr,
         print_freq=print_freq,
         show_animation=show_train_animation,
-        weights_path=weights_path
+        weights_path=weights_path,
+        dataset_name=dataset_name
     )
 
     if show_train_animation:

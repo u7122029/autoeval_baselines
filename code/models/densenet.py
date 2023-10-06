@@ -4,10 +4,11 @@ from models.model import Model
 
 
 class DenseNet_SS(Model, nn.Module):
-    def __init__(self, version=121, num_ss_classes=4):
+    def __init__(self, version=121, num_ss_classes=4, **kwargs):
         nn.Module.__init__(self)
-
-        Model.__init__(self, num_ss_classes, f"densenet{version}", "u7122029/PyTorch_CIFAR10", f"densenet{version}")
+        Model.__init__(self, num_ss_classes, f"densenet{version}", "u7122029/PyTorch_CIFAR10",
+                       f"densenet{version}",
+                       **kwargs)
 
         # feature extraction backbone
         self.feat = self.model.features
@@ -24,6 +25,7 @@ class DenseNet_SS(Model, nn.Module):
         x = F.relu(x, inplace=True)
         x = F.adaptive_avg_pool2d(x, (1, 1)).view(x.size(0), -1)
         return self.fc(x), self.fc_ss(x)
+
 
 if __name__ == "__main__":
     d = DenseNet_SS()

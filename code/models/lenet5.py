@@ -4,9 +4,10 @@ from models.model import Model
 
 
 class LeNet5_SS(Model, nn.Module):
-    def __init__(self, num_ss_classes=4):
+    def __init__(self, num_ss_classes=4, **kwargs):
         nn.Module.__init__(self)
-        Model.__init__(self, num_ss_classes, "lenet5", "u7122029/PyTorch_CIFAR10", "lenet5", force_reload=True)
+        Model.__init__(self, num_ss_classes, "lenet5", "u7122029/PyTorch_CIFAR10", "lenet5",
+                       **kwargs)
 
         # feature extraction backbone
         self.feat1 = nn.Sequential(self.model.layer1, self.model.layer2)

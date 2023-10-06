@@ -9,9 +9,10 @@ class RepVGG_SS(Model, nn.Module):
     num_ss_classes: number of self supervised task classes. 4 by default for rotation.
     """
 
-    def __init__(self, num_ss_classes=4):
+    def __init__(self, num_ss_classes=4, **kwargs):
         nn.Module.__init__(self)
-        Model.__init__(self, num_ss_classes, "repvgg", "chenyaofo/pytorch-cifar-models", "cifar10_repvgg_a0")
+        Model.__init__(self, num_ss_classes, "repvgg", "chenyaofo/pytorch-cifar-models",
+                       "cifar10_repvgg_a0", **kwargs)
 
         # feature extraction backbone
         # automatically frozen in parent class.

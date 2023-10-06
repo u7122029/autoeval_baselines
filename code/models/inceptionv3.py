@@ -3,10 +3,12 @@ import torch.nn.functional as F
 
 from models.model import Model
 
+
 class Inceptionv3_SS(Model, nn.Module):
-    def __init__(self, num_ss_classes=4):
+    def __init__(self, num_ss_classes=4, **kwargs):
         nn.Module.__init__(self)
-        Model.__init__(self, num_ss_classes, "inception_v3", "u7122029/PyTorch_CIFAR10", "inception_v3")
+        Model.__init__(self, num_ss_classes, "inception_v3", "u7122029/PyTorch_CIFAR10",
+                       "inception_v3", **kwargs)
 
         # feature extraction backbone
         self.feat = nn.Sequential(*list(self.model.children())[:-1])

@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn.functional
 import torch.utils.data
-import torchvision.transforms
+import torchvision.transforms as T
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from tabulate import tabulate
-from models.model import Model
+from models import Model
 from tqdm import tqdm
 from models import get_model
 
@@ -31,14 +31,53 @@ EPOCHS = 25
 MOMENTUM = 0.9
 WEIGHT_DECAY = 1e-4
 
-TRANSFORM = torchvision.transforms.Compose(
+TRANSFORM_CIFAR10 = T.Compose(
     [
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(
+        T.ToTensor(),
+        T.Normalize(
             (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
         ),
     ]
 )
+
+TRANSFORM_MNIST = T.Compose(
+    [
+        T.ToTensor()
+    ]
+)
+
+TRANSFORM_SVHN = T.Compose(
+    [
+        T.ToTensor(),
+        T.Normalize((0.4376821, 0.4437697, 0.47280442), (0.19803012, 0.20101562, 0.19703614))
+    ]
+)
+
+DSET_TRANSFORMS_EVAL = {
+    "cifar10": TRANSFORM_CIFAR10,
+    "mnist": TRANSFORM_MNIST,
+    "svhn": TRANSFORM_SVHN
+}
+
+
+class ToRGB:
+    def __init__(self):
+        pass
+
+    def __call__(self, sample):
+        _input = sample
+        return _input.repeat(3, 1, 1)
+
+
+TRANSFORM_MNIST_TRAIN = T.Compose([T.Resize((32, 32)),
+                                   T.ToTensor(),
+                                   ToRGB()])
+
+DSET_TRANSFORMS_TRAIN = {
+    "cifar10": TRANSFORM_CIFAR10,
+    "mnist": TRANSFORM_MNIST_TRAIN,
+    "svhn": TRANSFORM_SVHN
+}
 
 VALID_MODELS = [
     "resnet20",  # rotation, jigsaw done
@@ -57,18 +96,23 @@ VALID_MODELS = [
     "linear",  # rotation, jigsaw done
     "alexnet",  # rotation, jigsaw done
     "lenet5",  # rotation, jigsaw done
-    "obc"  # rotation, jigsaw done.
+]
+
+VALID_DATASETS = [
+    "cifar10",
+    "mnist",
+    "svhn"
 ]
 
 VALID_TASK_NAMES = [
     "rotation",
-    "classification"  # TODO: Add jigsaw later.
+    "classification"
 ]
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-class CIFAR10NP(torch.utils.data.Dataset):
+class CIFAR10NP(torch.utils.data.Dataset):  # TODO: rename to DsetNP
     # Dataset class for CIFAR10 dataset stored as numpy arrays
     def __init__(self, data_path, label_path, transform=None):
         # data_path and label_path are assumed to be ndarray objects
@@ -176,7 +220,8 @@ def accuracy(output, target, topk=(1,)):
     return res
 
 
-def generate_results(model_name,
+def generate_results(dataset_name,
+                     model_name,
                      task_name,
                      data_root,
                      results_path,
@@ -206,18 +251,20 @@ def generate_results(model_name,
     dset_paths = [Path(i) for i in dset_paths]
 
     # load the model
-    model = get_model(model_name, task_name, model_ss_out_size, device, load_best_fc=load_best_fc)
+    model = get_model(model_name, task_name, model_ss_out_size, device, load_best_fc=load_best_fc,
+                      dataset_name=dataset_name)
     model.eval()
 
     for dset_collection_root in dset_paths:
-        results_root = results_path / "raw_findings" / dset_collection_root
-        dataset_recurse(data_root / dset_collection_root,
+        results_root = results_path / "raw_findings" / dataset_name / dset_collection_root
+        dataset_recurse(data_root / dataset_name / dset_collection_root,
                         results_root,
                         task_name,
                         model,
                         predictor_func,
                         device,
-                        recalculate_results)
+                        recalculate_results,
+                        dataset_name=dataset_name)
 
 
 def r2_adjusted(score, n, f):
@@ -228,7 +275,7 @@ def r2_adjusted(score, n, f):
     :param f: The number of independent variables.
     :return: The adjusted R^2 score.
     """
-    return 1 - (1-score)*(n-1)/(n-f-1)
+    return 1 - (1 - score) * (n - 1) / (n - f - 1)
 
 
 def fit_lr(train_x,
@@ -240,7 +287,9 @@ def fit_lr(train_x,
            y_task: str,
            show_graphs: bool = False,
            results_root: Path = RESULTS_PATH_DEFAULT,
-           output: Path = None):
+           output: Path = None,
+           dataset_name="cifar10"):
+    print(train_x.shape, train_y.shape)
     lr_train = LinearRegression()
     lr_train.fit(train_x.reshape(-1, 1), train_y)
 
@@ -266,14 +315,14 @@ def fit_lr(train_x,
     lr_train_r2_val_adjusted = r2_adjusted(lr_train_r2_val, len(val_y), 1)
     lr_val_r2_val_adjusted = r2_adjusted(lr_val_r2_val, len(val_y), 1)
 
-    print("Displaying Metrics")
+    print(f"Displaying Metrics - {dataset_name}")
 
     grid = [["Metric", "Training Set", "Validation Set (Val LR)", "Validation Set (Train LR)"],
             ["RMSE", f"{lr_train_rmse_loss_train:.4f}", f"{lr_val_rmse_loss_val:.4f}", f"{lr_train_rmse_loss_val:.4f}"],
             ["R^2", f"{lr_train_r2_train:.4f}", f"{lr_val_r2_val:.4f}", f"{lr_train_r2_val:.4f}"],
-            ["R^2 Adjusted", f"{lr_train_r2_train_adjusted:.4f}", f"{lr_val_r2_val_adjusted:.4f}", f"{lr_train_r2_val_adjusted:.4f}"]]
+            ["R^2 Adjusted", f"{lr_train_r2_train_adjusted:.4f}", f"{lr_val_r2_val_adjusted:.4f}",
+             f"{lr_train_r2_val_adjusted:.4f}"]]
     print(tabulate(grid, headers="firstrow", tablefmt="psql"))
-
 
     all_x = np.concatenate([train_x, val_x])
     all_pred_y_train = lr_train.predict(all_x.reshape(-1, 1))
@@ -297,34 +346,30 @@ def fit_lr(train_x,
         p.parents[0].mkdir(parents=True, exist_ok=True)
         plt.savefig(str(results_root / output), format="svg")
 
-    """plt.figure()
-    plt.title(f"Classification Acc. vs {task_name} Acc. ({model_name}) - Exterior Domain")
-    plt.xlabel(f"{task_name} Accuracy")
-    plt.ylabel("Classification Accuracy")
-    plt.scatter(val_x.reshape(-1, 1), val_y, marker=".")
-    plt.plot(val_x.reshape(-1, 1), lr_train_val_y_hat, "r", label="Interior Domain Line")
-    plt.plot(val_x.reshape(-1, 1), lr_val_val_y_hat, "g", label="Exterior Domain Line")
-    plt.legend(loc="best")
-    if save_graphs_dir:
-        plt.savefig(f"{save_graphs_dir}/other_cifar10_corrupted.png", format="png")"""
-
     if show_graphs:
         plt.show()
 
     plt.close("all")
-    return lr_train_rmse_loss_train, lr_val_rmse_loss_val, lr_train_rmse_loss_val, lr_train_r2_train, lr_val_r2_val, \
-        lr_train_r2_val
+    return (lr_train_rmse_loss_train,
+            lr_val_rmse_loss_val,
+            lr_train_rmse_loss_val,
+            lr_train_r2_train,
+            lr_val_r2_val,
+            lr_train_r2_val
+            )
 
 
 def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func, device=DEVICE,
-                    recalculate=False):
+                    recalculate=False, dataset_name="cifar10"):
     outfile_path = temp_root / f"{model.model_name}.npz"
-    if not recalculate and outfile_path.exists() and name in np.load(str(outfile_path)):
-        return
+    #if not recalculate and outfile_path.exists() and name in np.load(str(outfile_path)):
+    #    return
 
-    if (data_root / "data.npy").exists() and (data_root / "labels.npy").exists():
+    is_leaf = (data_root / "data.npy").exists() and (data_root / "labels.npy").exists()
+    leaf_result_exists = outfile_path.exists() and name in np.load(str(outfile_path))
+    if is_leaf and ((not leaf_result_exists) or recalculate):
         # Leaf directory. Ignore anything else in here.
-        evaluator = DatasetEvaluator(data_root, TRANSFORM)
+        evaluator = DatasetEvaluator(data_root, DSET_TRANSFORMS_EVAL[dataset_name])
         acc = evaluator.evaluate(model, predictor_func, device)
 
         temp_root.mkdir(parents=True, exist_ok=True)
@@ -336,18 +381,22 @@ def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, p
         np.savez(str(outfile_path), **data)
         return
 
-    # Visit all subdirs
-    #print(f"Current data collection: {str(data_root)}\tCurrent temp path: {str(temp_root)}")
+    if is_leaf:
+        return
+
+    # Otherwise we are in a subdirectory.
+    # Visit all subdirs.
     out = []
     dirs = sorted(data_root.iterdir())  # Sorting ensures order.
     progressbar = tqdm(dirs, total=len(list(dirs)))
     for path in progressbar:
-        progressbar.set_postfix({"data_dir": str(data_root)})
+        progressbar.set_postfix({"data_dir": str(data_root), "temp_dir": str(temp_root)})
         if not path.is_dir():
             # Skip files.
             continue
         entity = path.parts[-1]
-        dataset_recurse(data_root / entity, temp_root / entity, name, model, predictor_func, device, recalculate)
+        dataset_recurse(data_root / entity, temp_root / entity, name, model, predictor_func, device, recalculate,
+                        dataset_name=dataset_name)
         loaded = np.load(str(temp_root / entity / f"{model.model_name}.npz"))[name]
         out.append(loaded)
     out = np.concatenate(out)

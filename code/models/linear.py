@@ -4,9 +4,10 @@ from models.model import Model
 
 
 class Linear_SS(Model, nn.Module):
-    def __init__(self, num_ss_classes=4):
+    def __init__(self, num_ss_classes=4, **kwargs):
         nn.Module.__init__(self)
-        Model.__init__(self, num_ss_classes, "linear", "u7122029/pytorch_CIFAR10", "linear", force_reload=True)
+        Model.__init__(self, num_ss_classes, "linear", "u7122029/pytorch_CIFAR10", "linear",
+                       **kwargs)
 
         # The linear model does not have a feature extraction backbone.
 

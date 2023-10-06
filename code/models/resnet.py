@@ -5,14 +5,14 @@ from models.model import Model
 
 
 class ResNet_SS(Model, nn.Module):
-    def __init__(self, version=56, num_ss_classes=4):
+    def __init__(self, version=56, num_ss_classes=4, **kwargs):
         nn.Module.__init__(self)
         if version in {110, 1202}:
             Model.__init__(self, num_ss_classes, f"resnet{version}", "u7122029/pytorch_resnet_cifar10",
-                           f"resnet{version}")
+                           f"resnet{version}", **kwargs)
         else:
             Model.__init__(self, num_ss_classes, f"resnet{version}", "chenyaofo/pytorch-cifar-models",
-                           f"cifar10_resnet{version}")
+                           f"cifar10_resnet{version}", **kwargs)
 
         self.version = version
 

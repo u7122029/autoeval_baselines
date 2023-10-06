@@ -4,9 +4,10 @@ from models.model import Model
 
 
 class AlexNet_SS(Model, nn.Module):
-    def __init__(self, num_ss_classes=4):
+    def __init__(self, num_ss_classes=4, **kwargs):
         nn.Module.__init__(self)
-        Model.__init__(self, num_ss_classes, "alexnet", "u7122029/pytorch-cifar10", "alexnet")
+        Model.__init__(self, num_ss_classes, "alexnet", "u7122029/pytorch-cifar10", "alexnet",
+                       **kwargs)
 
         # feature extraction backbone
         self.feat = self.model.features

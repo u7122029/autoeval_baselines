@@ -17,7 +17,7 @@ import torch.utils.data
 import matplotlib.pyplot as plt  # visualisation
 
 from utils import (
-    TRANSFORM,
+    TRANSFORM_CIFAR10,
     construct_permutation_mappings,
     fit_lr,
     VALID_MODELS
@@ -240,14 +240,14 @@ if __name__ == "__main__":
 
     ss_predictor_func = lambda dataloader: jigsaw_pred(dataloader, model, device, num_permutations, int_to_perm)
     if args.train_ss_layer or args.reevaluate_domains or not os.path.exists(f"{temp_file_path}{train_set}.npy"):
-        eval_train(dataset_path, temp_file_path, train_set, TRANSFORM, args.batch_size, ss_predictor_func)
+        eval_train(dataset_path, temp_file_path, train_set, TRANSFORM_CIFAR10, args.batch_size, ss_predictor_func)
 
     if args.train_ss_layer or args.reevaluate_domains or not os.path.exists(f"{temp_file_path}val_sets.npy"):
         eval_validation(
             dataset_path,
             temp_file_path,
             val_sets,
-            TRANSFORM,
+            TRANSFORM_CIFAR10,
             args.batch_size,
             ss_predictor_func
         )

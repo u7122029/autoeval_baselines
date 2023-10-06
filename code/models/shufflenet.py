@@ -4,10 +4,10 @@ from models.model import Model
 
 
 class ShuffleNet_SS(Model, nn.Module):
-    def __init__(self, num_ss_classes=4):
+    def __init__(self, num_ss_classes=4, **kwargs):
         nn.Module.__init__(self)
         Model.__init__(self, num_ss_classes, "shufflenet", "chenyaofo/pytorch-cifar-models",
-                       "cifar10_shufflenetv2_x2_0")
+                       "cifar10_shufflenetv2_x2_0", **kwargs)
 
         # feature extraction backbone
         self.feat = torch.nn.Sequential(*list(self.model.children())[:-1])
