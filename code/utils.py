@@ -1,6 +1,6 @@
 from pathlib import Path
 from itertools import permutations
-
+from math import factorial
 import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn.functional
@@ -9,17 +9,17 @@ import torchvision.transforms as T
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from tabulate import tabulate
-from models import Model
+from models import Model, get_model
 from tqdm import tqdm
-from models import get_model
 
 # PATHS
-TEMP_PATH_DEFAULT = "../temp"
+ORIGINAL_DATASET_ROOT_DEFAULT = "C:/ml_datasets" # Path to original version of cifar10, svhn, mnist, etc
 RESULTS_PATH_DEFAULT = "../results"
 WEIGHTS_PATH_DEFAULT = "../model_weights"
 DATA_PATH_DEFAULT = "data"
 TRAIN_DATA = "train_data"
 VAL_DATA = "val_data"
+DEFAULT_MAX_JIGSAW_PERMS = 4
 DEFAULT_DATASET_COND = lambda root, dirs, files: "data.npy" in files and "labels.npy" in files
 
 # SS LAYER TRAINING
@@ -85,7 +85,7 @@ VALID_MODELS = [
     "resnet44",  # rotation, jigsaw done
     "resnet56",  # rotation, jigsaw done
     "resnet110",  # rotation, jigsaw done
-    "resnet1202",  # rotation, jigsaw done
+    #"resnet1202",  # rotation, jigsaw done
     "repvgg",  # rotation, jigsaw done
     "mobilenetv2",  # rotation, jigsaw done
     "densenet121",  # rotation, jigsaw done
@@ -106,7 +106,8 @@ VALID_DATASETS = [
 
 VALID_TASK_NAMES = [
     "rotation",
-    "classification"
+    "classification",
+    "nuclear_norm"
 ]
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -148,13 +149,10 @@ class DatasetEvaluator:
         data_path = str(self.dir_path / "data.npy")
         label_path = str(self.dir_path / "labels.npy")
 
+        dset = CIFAR10NP(data_path=data_path, label_path=label_path, transform=self.transform)
         dataloader = torch.utils.data.DataLoader(
-            dataset=CIFAR10NP(
-                data_path=data_path,
-                label_path=label_path,
-                transform=self.transform,
-            ),
-            batch_size=500,
+            dset,
+            batch_size=len(dset),
             shuffle=False,
         )
 
@@ -179,22 +177,35 @@ def inverse_permutation(perm: torch.Tensor):
     return inv
 
 
-def construct_permutation_mappings(grid_length, num_out_perms=None):
+def construct_permutation_mappings(grid_length: int, num_out_perms=None):
     """
     Returns a mapping from the integers to grid_length**2 permutations in tuple form to the integers
     :param grid_length: The length of one side of the square grid.
     :param num_out_perms: The number of output permutations.
     :return: The integers to permutations mapping and its inverse.
     """
-    if num_out_perms is None:
-        num_out_perms = grid_length ** 2
-
+    max_permutations = factorial(grid_length ** 2)
     perms = permutations(range(grid_length ** 2))
-    out = {}
-    for i in range(num_out_perms):
-        perm = torch.Tensor(next(perms))
-        out[i] = {"perm": perm, "inverse": inverse_permutation(perm)}
+    if num_out_perms is None:
+        num_out_perms = max_permutations
+    elif num_out_perms == 0:
+        raise Exception("Cannot use 0 permutations.")
+    elif num_out_perms > max_permutations:
+        raise Exception(f"Number of requested permutations ({num_out_perms}) "
+                        f"cannot be larger than the maximum number of permutations ({max_permutations}).")
 
+    spacing = max_permutations // num_out_perms
+    out = [] # originally was an empty dictionary.
+    for i in range(0, max_permutations, spacing):
+        if len(out) == num_out_perms: break
+
+        raw_perm = next(perms)
+        if i % spacing != 0: continue
+
+        perm = torch.Tensor(raw_perm).long()
+        out.append({"perm": perm, "inverse": inverse_permutation(perm)})
+
+    assert len(out) == num_out_perms
     return out
 
 
@@ -239,7 +250,8 @@ def generate_results(dataset_name,
     :param results_path: The root path of all results.
     :param dset_paths: The relative paths of each dataset.
     :param model_ss_out_size: The size of the self-supervised output layer.
-    :param predictor_func: The predictor function.
+    :param predictor_func: The predictor function. Takes in a dataloader, model and device. Outputs a metric such
+                            as accuracy or effective invariance (EI)
     :param recalculate_results: True if the results should be recalculated, and False otherwise.
     :param device: The device the model and datasets should be run on.
     :param load_best_fc: True if the model should have its optimal weights loaded for a self-supervised task, and false
@@ -251,7 +263,8 @@ def generate_results(dataset_name,
     dset_paths = [Path(i) for i in dset_paths]
 
     # load the model
-    model = get_model(model_name, task_name, model_ss_out_size, device, load_best_fc=load_best_fc,
+    model = get_model(model_name, task_name, model_ss_out_size, device,
+                      load_best_fc=load_best_fc,
                       dataset_name=dataset_name)
     model.eval()
 
@@ -289,7 +302,8 @@ def fit_lr(train_x,
            results_root: Path = RESULTS_PATH_DEFAULT,
            output: Path = None,
            dataset_name="cifar10"):
-    print(train_x.shape, train_y.shape)
+
+    #TODO: Add spearman correlation coefficient.
     lr_train = LinearRegression()
     lr_train.fit(train_x.reshape(-1, 1), train_y)
 
@@ -361,6 +375,18 @@ def fit_lr(train_x,
 
 def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func, device=DEVICE,
                     recalculate=False, dataset_name="cifar10"):
+    """
+
+    :param data_root:
+    :param temp_root:
+    :param name:
+    :param model:
+    :param predictor_func:
+    :param device:
+    :param recalculate:
+    :param dataset_name:
+    :return:
+    """
     outfile_path = temp_root / f"{model.model_name}.npz"
     #if not recalculate and outfile_path.exists() and name in np.load(str(outfile_path)):
     #    return
@@ -370,14 +396,14 @@ def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, p
     if is_leaf and ((not leaf_result_exists) or recalculate):
         # Leaf directory. Ignore anything else in here.
         evaluator = DatasetEvaluator(data_root, DSET_TRANSFORMS_EVAL[dataset_name])
-        acc = evaluator.evaluate(model, predictor_func, device)
+        score = evaluator.evaluate(model, predictor_func, device)
 
         temp_root.mkdir(parents=True, exist_ok=True)
 
         data = {}
         if outfile_path.exists():
             data = dict(np.load(str(outfile_path)))
-        data[name] = np.array([(acc, str(data_root))])
+        data[name] = np.array([(score, str(data_root))])
         np.savez(str(outfile_path), **data)
         return
 
@@ -410,6 +436,7 @@ def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, p
 
 
 def ensure_cwd():
+    print(f"Currently using device: {DEVICE}")
     current_dir = Path.cwd()
     checker = current_dir.parts
     if checker[-1] != "code" and checker[-2] != "autoeval_baselines":

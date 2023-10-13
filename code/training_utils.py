@@ -234,7 +234,6 @@ def train_ss_fc(
         dataset_name="cifar10"):
 
     weights_path = Path(weights_path)
-    #results_path = Path(results_path)
 
     # Set up figure for plotting losses per epoch
     figure = plt.figure()
@@ -344,9 +343,7 @@ def train_original_dataset(dataset_name: str,
 
     model = get_model(model_name, task_name, num_ss_out, device, False, dataset_name, force_reload=True)
 
-    train_loader, test_loader = load_original_dataset(
-        data_root, batch_size, device, dataset_name
-    )
+    train_loader, test_loader = load_original_dataset(data_root, batch_size, device, dataset_name)
 
     train_ss_fc(
         model,

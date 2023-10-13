@@ -17,7 +17,8 @@ from utils import (
     PRINT_FREQ,
     LEARN_RATE,
     EPOCHS,
-    WEIGHTS_PATH_DEFAULT
+    WEIGHTS_PATH_DEFAULT,
+    ORIGINAL_DATASET_ROOT_DEFAULT
 )
 
 from training_utils import train_original_dataset, get_model, test_model, load_original_dataset
@@ -100,7 +101,7 @@ parser.add_argument(
 parser.add_argument(
     "--cifar10-original-root",
     required=False,
-    default="C:/ml_datasets",
+    default=ORIGINAL_DATASET_ROOT_DEFAULT,
     type=str,
     help="path containing the original CIFAR10 dataset"
 )
@@ -165,6 +166,15 @@ def rotate_batch(batch, label):
             ]
         )
         batch = batch.repeat((4, 1, 1, 1))
+    elif label == "expand_exclude_id":
+        labels = torch.cat(
+            [
+                torch.zeros(len(batch), dtype=torch.long) + 1,
+                torch.zeros(len(batch), dtype=torch.long) + 2,
+                torch.zeros(len(batch), dtype=torch.long) + 3,
+            ]
+        )
+        batch = batch.repeat((3, 1, 1, 1))
     else:
         assert isinstance(label, int)
         labels = torch.zeros((len(batch),), dtype=torch.long) + label
@@ -172,17 +182,16 @@ def rotate_batch(batch, label):
 
 
 def rotation_pred(dataloader, model, device, label_method="expand"):
-    # return a tuple of (classification accuracy, rotation prediction accuracy)
     correct_rot = []
     for imgs, _ in iter(dataloader):
         imgs_rot, labels_rot = rotate_batch(imgs, label_method)
         imgs_rot, labels_rot = imgs_rot.to(device), labels_rot.to(device)
         with torch.no_grad():
             _, out_rot = model(imgs_rot)
-            pred_rot = torch.argmax(out_rot, dim=1, keepdim=True)
-            correct_rot.append(pred_rot.squeeze(1).eq(labels_rot).cpu())
-    correct_rot = torch.cat(correct_rot).numpy()
-    return np.mean(correct_rot)
+            pred_rot = torch.argmax(out_rot, dim=1)
+            correct_rot.append(pred_rot.eq(labels_rot).float())
+    correct_rot = torch.cat(correct_rot)
+    return torch.mean(correct_rot).item()
 
 
 # label_method = "rand" if use_rand_labels_eval else "expand"

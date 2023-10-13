@@ -12,7 +12,6 @@ from utils import (
     ensure_cwd,
     VALID_MODELS,
     DEVICE,
-    TEMP_PATH_DEFAULT,
     DATA_PATH_DEFAULT,
     RESULTS_PATH_DEFAULT,
     VALID_DATASETS
