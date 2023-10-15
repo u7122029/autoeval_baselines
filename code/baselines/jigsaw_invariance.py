@@ -2,28 +2,25 @@ import argparse
 import sys
 sys.path.append(".")
 
-import numpy as np
 import torch
-from pathlib import Path
 
 from utils import (
     ensure_cwd,
     VALID_MODELS,
     VALID_DATASETS,
-    DEVICE,
     RESULTS_PATH_DEFAULT,
     DATA_PATH_DEFAULT,
     BATCH_SIZE,
-    PRINT_FREQ,
-    LEARN_RATE,
-    EPOCHS,
     WEIGHTS_PATH_DEFAULT,
-    ORIGINAL_DATASET_ROOT_DEFAULT
+    ORIGINAL_DATASET_ROOT_DEFAULT,
+    DEFAULT_MAX_JIGSAW_PERMS
 )
 
-from jigsaw import jigsaw_batch
+from jigsaw import (
+    jigsaw_batch,
+    construct_permutation_mappings
+)
 
-from training_utils import train_original_dataset, get_model, test_model, load_original_dataset
 from utils import generate_results
 from rotation_invariance import effective_invariance
 
@@ -90,42 +87,58 @@ parser.add_argument(
     required=False,
     help="Whether the task should be recalculated over the given dataset paths."
 )
+parser.add_argument(
+    '--max-permutations',
+    required=False,
+    default=DEFAULT_MAX_JIGSAW_PERMS,
+    type=int,
+    help='Dictates the maximum number of jigsaw permutations to use. Should not be larger than (grid_length ** 2)!'
+)
+parser.add_argument(
+    "--grid_length",
+    required=False,
+    type=int,
+    default=2,
+    help="The length of one side of a (square) jigsaw image."
+)
 
 
-def jigsaw_inv_pred(dataloader, model, device, int_to_perm, random=False, exclude_id=True):
+def jigsaw_inv_pred(dataloader, model, device, int_to_perm, grid_length, label_method="expand_exclude_id"):
     yhat = []
     yhat_t = []
     phat = []
     phat_t = []
-    num_permutations = len(int_to_perm)
     for imgs, _ in iter(dataloader):
-        imgs.to(device)
-        imgs_rot, _ = jigsaw_batch(imgs, num_permutations, int_to_perm, random=random, exclude_id=exclude_id)
+        imgs = imgs.to(device)
+
+        imgs_rot, _ = jigsaw_batch(imgs,
+                                   len(int_to_perm),
+                                   int_to_perm,
+                                   grid_length,
+                                   label_method) # we don't care about the rotation labels.
         imgs_rot = imgs_rot.to(device)
 
         with torch.no_grad():
             out_class, _ = model(imgs)
             out_rot, _ = model(imgs_rot)
 
-            out_class_maxes = torch.max(out_class, dim=1)
+            if label_method == "expand_exclude_id":
+                # repeat each entry of out_class_preds 3 times.
+                out_class = out_class.repeat(3,1)
+
+            out_class_maxes = torch.max(torch.softmax(out_class, dim=1), dim=1)
             out_class_preds = out_class_maxes.indices
             out_class_confs = out_class_maxes.values
 
-            out_jigsaw_maxes = torch.max(out_rot, dim=1)
-            out_jigsaw_preds = out_jigsaw_maxes.indices
-            out_jigsaw_confs = out_jigsaw_maxes.values
-
-            # repeat each entry of out_class_preds 3 times.
-            #out_class_preds = torch.stack([out_class_preds for _ in range(4)], dim=1).flatten()
-            out_class_preds = out_class_preds.repeat(1, num_permutations - 1).flatten()
-            #out_class_confs = torch.stack([out_class_confs for _ in range(4)], dim=1).flatten()
-            out_class_confs = out_class_confs.repeat(1, num_permutations - 1).flatten()
+            out_rot_maxes = torch.max(torch.softmax(out_rot, dim=1), dim=1)
+            out_rot_preds = out_rot_maxes.indices
+            out_rot_confs = out_rot_maxes.values
 
             yhat.append(out_class_preds)
-            yhat_t.append(out_jigsaw_preds)
+            yhat_t.append(out_rot_preds)
 
             phat.append(out_class_confs)
-            phat_t.append(out_jigsaw_confs)
+            phat_t.append(out_rot_confs)
 
     yhat = torch.concat(yhat)
     yhat_t = torch.concat(yhat_t)
@@ -141,6 +154,7 @@ def main(*ags, **kwargs):
 if __name__ == "__main__":
     ensure_cwd()
     args = parser.parse_args()
+    int_to_perm = construct_permutation_mappings(int(args.grid_length), int(args.max_permutations))
     main(args.dataset,
          args.model,
          "jigsaw_invariance",
@@ -148,5 +162,5 @@ if __name__ == "__main__":
          args.results_path,
          args.dsets,
          4,
-         jigsaw_inv_pred,
+         lambda x,y,z: jigsaw_inv_pred(x,y,z,int_to_perm,args.grid_length),
          recalculate_results=args.recalculate_results)

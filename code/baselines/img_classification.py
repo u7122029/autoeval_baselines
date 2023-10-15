@@ -66,9 +66,9 @@ def calculate_acc(dataloader, model, device=DEVICE):
     for imgs, labels in iter(dataloader):
         imgs, labels = imgs.to(device), labels.to(device)
         pred, _ = predict_multiple(model, imgs)
-        correct.append(pred.squeeze(1).eq(labels).cpu())
-    correct = torch.cat(correct).numpy()
-    return np.mean(correct)
+        correct.append(pred.squeeze(1).eq(labels))
+    correct = torch.cat(correct).float()
+    return torch.mean(correct).item()
 
 
 def main(*ags, **kwargs):

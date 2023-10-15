@@ -23,6 +23,7 @@ class Linear_SS(Model, nn.Module):
         out_ss = self.fc_ss(x)
         return out_class, out_ss
 
+
 if __name__ == "__main__":
     mdl = Linear_SS()
     print(mdl)

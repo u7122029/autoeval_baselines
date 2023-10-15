@@ -2,7 +2,6 @@ import argparse
 import sys
 sys.path.append(".")
 
-import numpy as np
 import torch
 from pathlib import Path
 
@@ -21,7 +20,7 @@ from utils import (
     ORIGINAL_DATASET_ROOT_DEFAULT
 )
 
-from training_utils import train_original_dataset, get_model, test_model, load_original_dataset
+from training_utils import train_original_dataset
 from utils import generate_results
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Rotation Prediction")

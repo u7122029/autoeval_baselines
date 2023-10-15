@@ -15,7 +15,6 @@ import torch.utils.data
 from pathlib import Path
 
 from utils import (
-    construct_permutation_mappings,
     generate_results,
     ensure_cwd,
     VALID_MODELS,
@@ -29,7 +28,8 @@ from utils import (
     DEVICE,
     DEFAULT_MAX_JIGSAW_PERMS
 )
-
+from math import factorial
+from itertools import permutations
 from training_utils import train_original_dataset
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Jigsaw Prediction")
@@ -148,6 +148,44 @@ parser.add_argument(
 )
 
 
+def inverse_permutation(perm: torch.Tensor):
+    inv = torch.empty_like(perm)
+    inv[perm] = torch.arange(perm.size(0), device=perm.device)
+    return inv
+
+
+def construct_permutation_mappings(grid_length: int, num_out_perms=None):
+    """
+    Returns a mapping from the integers to grid_length**2 permutations in tuple form to the integers
+    :param grid_length: The length of one side of the square grid.
+    :param num_out_perms: The number of output permutations.
+    :return: The integers to permutations mapping and its inverse.
+    """
+    max_permutations = factorial(grid_length ** 2)
+    perms = permutations(range(grid_length ** 2))
+    if num_out_perms is None:
+        num_out_perms = max_permutations
+    elif num_out_perms == 0:
+        raise Exception("Cannot use 0 permutations.")
+    elif num_out_perms > max_permutations:
+        raise Exception(f"Number of requested permutations ({num_out_perms}) "
+                        f"cannot be larger than the maximum number of permutations ({max_permutations}).")
+
+    spacing = max_permutations // num_out_perms
+    out = [] # originally was an empty dictionary.
+    for i in range(0, max_permutations, spacing):
+        if len(out) == num_out_perms: break
+
+        raw_perm = next(perms)
+        if i % spacing != 0: continue
+
+        perm = torch.Tensor(raw_perm).long()
+        out.append({"perm": perm, "inverse": inverse_permutation(perm)})
+
+    assert len(out) == num_out_perms
+    return out
+
+
 # Assumes (n_channels, rows, cols)
 def patchify_image(image_tensor, grid_length=2):
     """
@@ -160,13 +198,12 @@ def patchify_image(image_tensor, grid_length=2):
     row_length = n_rows // grid_length
     col_length = n_cols // grid_length
 
-    patches = []
-    rows = torch.split(image_tensor, row_length, 1)
-    for row in rows:
-        row_patches = torch.split(row, col_length, 2)
-        patches += row_patches
-
-    return torch.stack(patches)
+    patches = (image_tensor
+               .unfold(1,row_length,col_length)
+               .unfold(2,row_length,col_length)
+               .reshape(3,grid_length**2,row_length,col_length)
+               .permute(1,0,2,3))
+    return patches
 
 
 def reassemble_jigsaw(patches):
@@ -188,11 +225,11 @@ def reassemble_jigsaw(patches):
     return reassembled
 
 
-def jigsaw_batch_with_labels(batch, labels, int_to_perm):
+def jigsaw_batch_with_labels(batch, labels, int_to_perm, grid_length):
     images = []
     for img, label in zip(batch, labels):
         perm = int_to_perm[label.item()]["perm"]
-        patches = patchify_image(img, args.grid_length)
+        patches = patchify_image(img, grid_length)
         permuted = patches[perm, :, :, :]
 
         # Put image back together
@@ -201,39 +238,37 @@ def jigsaw_batch_with_labels(batch, labels, int_to_perm):
     return torch.cat(images)
 
 
-def jigsaw_batch(batch, num_permutations, int_to_perm, random=True, exclude_id=False):
+def jigsaw_batch(batch, num_permutations, int_to_perm, grid_length, label_method="rand"):
     """
     :param batch: The batch
     :param num_permutations: The number of jigsaw permutations
     :param int_to_perm: The permutation index to the actual permutation tuple.
-    :param random: True, if the permutation assigned to each image should be random, and False if there should be
-    ``num_permutations`` copies of each image associated with each possible permutation.
-    :param exclude_id: True, if the identity permutation should be excluded (label index 0).
+    :param label_method: The label method.
     :return: The batch of jigsaw labels and the labels themselves.
     """
-    if random:
+    if label_method == "rand":
         labels = torch.randint(num_permutations, (len(batch),), dtype=torch.long)
-    elif not random and not exclude_id:
+    elif label_method == "expand":
         labels = torch.cat(
             [torch.zeros(len(batch), dtype=torch.long) + label_idx for label_idx in range(num_permutations)]
         )
         batch = batch.repeat((num_permutations, 1, 1, 1))
-    elif not random and exclude_id:
+    elif label_method == "expand_exclude_id":
         labels = torch.cat(
             [torch.zeros(len(batch), dtype=torch.long) + label_idx for label_idx in range(1,num_permutations)]
         )
         batch = batch.repeat((num_permutations - 1, 1, 1, 1))
     else:
-        raise Exception(f"Cannot have random={random} and exclude_id={exclude_id} at the same time.")
+        raise Exception(f"Invalid label method '{label_method}'.")
 
-    return jigsaw_batch_with_labels(batch, labels, int_to_perm), labels
+    return jigsaw_batch_with_labels(batch, labels, int_to_perm, grid_length), labels
 
 
-def jigsaw_pred(dataloader, model, device, num_permutations, int_to_perm):
+def jigsaw_pred(dataloader, model, device, num_permutations, int_to_perm, grid_length):
     # return a tuple of (classification accuracy, rotation prediction accuracy)
     outcomes = []
     for imgs, _ in iter(dataloader):
-        imgs_jig, labels_jig = jigsaw_batch(imgs, num_permutations, int_to_perm, random=False)
+        imgs_jig, labels_jig = jigsaw_batch(imgs, num_permutations, int_to_perm, grid_length, label_method="expand")
         imgs_jig, labels_jig = imgs_jig.to(device), labels_jig.to(device)
         with torch.no_grad():
             _, out_jig = model(imgs_jig)
@@ -270,13 +305,13 @@ def main(model_name,
                                                  num_out_perms=int(max_perms) if max_perms is not None else None)
     num_ss_out = len(int_to_perm)
     task_name = f"jigsaw-grid-len-{grid_length}_max-perm-{num_ss_out}"
-    ss_batch_func = lambda inp_batch: jigsaw_batch(inp_batch, num_ss_out, int_to_perm)
 
     # Get the model given the input parameters.
     best_ss_weights_exists = (weights_path / model_name / dataset_name / task_name / "best.pt").exists()
 
     # Train the model if required
     if train_ss_layer or not best_ss_weights_exists:
+        ss_batch_func = lambda inp_batch: jigsaw_batch(inp_batch, num_ss_out, int_to_perm, grid_length)
         train_original_dataset(dataset_name,
                                cifar10_root,
                                model_name,
@@ -299,7 +334,7 @@ def main(model_name,
                      dset_paths,
                      num_ss_out,
                      lambda dataloader, model, device: jigsaw_pred(dataloader, model, device,
-                                                                   num_ss_out, int_to_perm),
+                                                                   num_ss_out, int_to_perm, grid_length),
                      recalculate_results,
                      device)
 

@@ -9,6 +9,7 @@ from .mobilenetv2 import MobileNet_SS
 from .repvgg import RepVGG_SS
 from .resnet import ResNet_SS
 from .shufflenet import ShuffleNet_SS
+from .vgg import VGG_SS
 
 
 def get_model(name, task, num_ss_classes, device, load_best_fc=True, dataset_name="cifar10", **kwargs):
@@ -30,6 +31,10 @@ def get_model(name, task, num_ss_classes, device, load_best_fc=True, dataset_nam
         version = int(name.replace("resnet", ""))
         del kwargs["dataset"]
         model = ResNet_SS(version, **kwargs)
+    elif "vgg" in name and "_bn" in name:
+        version = int(name.split("_")[0][3:])
+        del kwargs["dataset"]
+        model = VGG_SS(version, **kwargs)
     elif name == "repvgg":
         del kwargs["dataset"]
         model = RepVGG_SS(**kwargs)

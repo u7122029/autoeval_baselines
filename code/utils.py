@@ -82,20 +82,19 @@ DSET_TRANSFORMS_TRAIN = {
 VALID_MODELS = [
     "resnet20",  # rotation, jigsaw done
     "resnet32",  # rotation, jigsaw done
-    "resnet44",  # rotation, jigsaw done
-    "resnet56",  # rotation, jigsaw done
-    "resnet110",  # rotation, jigsaw done
-    #"resnet1202",  # rotation, jigsaw done
-    "repvgg",  # rotation, jigsaw done
     "mobilenetv2",  # rotation, jigsaw done
     "densenet121",  # rotation, jigsaw done
-    "densenet161",  # rotation, jigsaw done
-    "densenet169",  # rotation, jigsaw done
+    "linear",  # rotation, jigsaw done
+    "lenet5",  # rotation, jigsaw done
+    "resnet44",  # rotation, jigsaw done
+    "resnet56",  # rotation, jigsaw done
     "shufflenet",  # rotation, jigsaw done
     "inception_v3",  # rotation, jigsaw done
-    "linear",  # rotation, jigsaw done
-    "alexnet",  # rotation, jigsaw done
-    "lenet5",  # rotation, jigsaw done
+    "repvgg",  # rotation, jigsaw done
+    "resnet110",  # rotation, jigsaw done
+    "densenet161",  # rotation, jigsaw done
+    "densenet169",  # rotation, jigsaw done
+    "resnet1202"  # rotation, jigsaw done
 ]
 
 VALID_DATASETS = [
@@ -107,7 +106,10 @@ VALID_DATASETS = [
 VALID_TASK_NAMES = [
     "rotation",
     "classification",
-    "nuclear_norm"
+    "nuclear_norm",
+    "rotation_invariance",
+    "jigsaw_invariance",
+    "jigsaw-grid-len-2_max-perm-4"
 ]
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -138,7 +140,7 @@ class DatasetEvaluator:
         self.dir_path = dir_path
         self.transform = transform
 
-    def evaluate(self, model: Model, predictor_func, device=DEVICE):
+    def evaluate(self, model: Model, predictor_func, device=DEVICE, batch_size=BATCH_SIZE):
         """
         Evaluate the dataset over a given model and predictor function.
         :param model: The model.
@@ -152,7 +154,7 @@ class DatasetEvaluator:
         dset = CIFAR10NP(data_path=data_path, label_path=label_path, transform=self.transform)
         dataloader = torch.utils.data.DataLoader(
             dset,
-            batch_size=len(dset),
+            batch_size=batch_size if batch_size is not None else len(dset),
             shuffle=False,
         )
 
@@ -168,67 +170,7 @@ def predict_multiple(model, imgs):
     with torch.no_grad():
         prob, _ = model(imgs)
         pred = prob.argmax(dim=1, keepdim=True)
-    return pred, torch.nn.functional.softmax(prob, dim=1).cpu().numpy()
-
-
-def inverse_permutation(perm: torch.Tensor):
-    inv = torch.empty_like(perm)
-    inv[perm] = torch.arange(perm.size(0), device=perm.device)
-    return inv
-
-
-def construct_permutation_mappings(grid_length: int, num_out_perms=None):
-    """
-    Returns a mapping from the integers to grid_length**2 permutations in tuple form to the integers
-    :param grid_length: The length of one side of the square grid.
-    :param num_out_perms: The number of output permutations.
-    :return: The integers to permutations mapping and its inverse.
-    """
-    max_permutations = factorial(grid_length ** 2)
-    perms = permutations(range(grid_length ** 2))
-    if num_out_perms is None:
-        num_out_perms = max_permutations
-    elif num_out_perms == 0:
-        raise Exception("Cannot use 0 permutations.")
-    elif num_out_perms > max_permutations:
-        raise Exception(f"Number of requested permutations ({num_out_perms}) "
-                        f"cannot be larger than the maximum number of permutations ({max_permutations}).")
-
-    spacing = max_permutations // num_out_perms
-    out = [] # originally was an empty dictionary.
-    for i in range(0, max_permutations, spacing):
-        if len(out) == num_out_perms: break
-
-        raw_perm = next(perms)
-        if i % spacing != 0: continue
-
-        perm = torch.Tensor(raw_perm).long()
-        out.append({"perm": perm, "inverse": inverse_permutation(perm)})
-
-    assert len(out) == num_out_perms
-    return out
-
-
-def accuracy(output, target, topk=(1,)):
-    """
-    Computes the precision@model for the specified values of model
-    :param output:
-    :param target:
-    :param topk:
-    :return:
-    """
-    maxk = max(topk)
-    batch_size = target.size(0)
-
-    _, pred = output.topk(maxk, 1, True, True)
-    pred = pred.t()
-    correct = pred.eq(target.view(1, -1).expand_as(pred))
-
-    res = []
-    for k in topk:
-        correct_k = correct[:k].view(-1).float().sum(0)
-        res.append(correct_k.mul_(100.0 / batch_size))
-    return res
+    return pred, torch.nn.functional.softmax(prob, dim=1)
 
 
 def generate_results(dataset_name,
@@ -241,7 +183,8 @@ def generate_results(dataset_name,
                      predictor_func,
                      recalculate_results=False,
                      device=DEVICE,
-                     load_best_fc=True):
+                     load_best_fc=True,
+                     batch_size=BATCH_SIZE):
     """
     Evaluates a given model over a specified task, storing the results in the given results path.
     :param model_name: The name of the model to load.
@@ -277,104 +220,12 @@ def generate_results(dataset_name,
                         predictor_func,
                         device,
                         recalculate_results,
-                        dataset_name=dataset_name)
-
-
-def r2_adjusted(score, n, f):
-    """
-    Computes the R^2 adjusted score.
-    :param score: The original R^2 score
-    :param n: The number of datapoints.
-    :param f: The number of independent variables.
-    :return: The adjusted R^2 score.
-    """
-    return 1 - (1 - score) * (n - 1) / (n - f - 1)
-
-
-def fit_lr(train_x,
-           train_y,
-           val_x,
-           val_y,
-           title: str,
-           x_task: str,
-           y_task: str,
-           show_graphs: bool = False,
-           results_root: Path = RESULTS_PATH_DEFAULT,
-           output: Path = None,
-           dataset_name="cifar10"):
-
-    #TODO: Add spearman correlation coefficient.
-    lr_train = LinearRegression()
-    lr_train.fit(train_x.reshape(-1, 1), train_y)
-
-    lr_val = LinearRegression()  # Linear regression for the validation set only.
-    lr_val.fit(val_x.reshape(-1, 1), val_y)
-
-    lr_train_train_y_hat = lr_train.predict(train_x.reshape(-1, 1))
-    lr_train_val_y_hat = lr_train.predict(val_x.reshape(-1, 1))
-
-    lr_val_val_y_hat = lr_val.predict(val_x.reshape(-1, 1))
-
-    lr_train_rmse_loss_train = mean_squared_error(y_true=train_y, y_pred=lr_train_train_y_hat, squared=False)
-    lr_train_rmse_loss_val = mean_squared_error(y_true=val_y, y_pred=lr_train_val_y_hat, squared=False)
-
-    lr_val_rmse_loss_val = mean_squared_error(y_true=val_y, y_pred=lr_val_val_y_hat, squared=False)
-
-    # Scoring.
-    lr_train_r2_train = r2_score(train_y, lr_train_train_y_hat)
-    lr_train_r2_val = r2_score(val_y, lr_train_val_y_hat)
-    lr_val_r2_val = r2_score(val_y, lr_val_val_y_hat)
-
-    lr_train_r2_train_adjusted = r2_adjusted(lr_train_r2_train, len(train_y), 1)
-    lr_train_r2_val_adjusted = r2_adjusted(lr_train_r2_val, len(val_y), 1)
-    lr_val_r2_val_adjusted = r2_adjusted(lr_val_r2_val, len(val_y), 1)
-
-    print(f"Displaying Metrics - {dataset_name}")
-
-    grid = [["Metric", "Training Set", "Validation Set (Val LR)", "Validation Set (Train LR)"],
-            ["RMSE", f"{lr_train_rmse_loss_train:.4f}", f"{lr_val_rmse_loss_val:.4f}", f"{lr_train_rmse_loss_val:.4f}"],
-            ["R^2", f"{lr_train_r2_train:.4f}", f"{lr_val_r2_val:.4f}", f"{lr_train_r2_val:.4f}"],
-            ["R^2 Adjusted", f"{lr_train_r2_train_adjusted:.4f}", f"{lr_val_r2_val_adjusted:.4f}",
-             f"{lr_train_r2_val_adjusted:.4f}"]]
-    print(tabulate(grid, headers="firstrow", tablefmt="psql"))
-
-    all_x = np.concatenate([train_x, val_x])
-    all_pred_y_train = lr_train.predict(all_x.reshape(-1, 1))
-    all_pred_y_val = lr_val.predict(all_x.reshape(-1, 1))
-
-    plt.figure()
-    plt.title(title)
-    plt.grid()
-    plt.xlabel(f"{x_task.capitalize()} Accuracy")
-    plt.ylabel(f"{y_task.capitalize()} Accuracy")
-    plt.scatter(val_x.reshape(-1, 1), val_y, marker="x", alpha=0.5, linewidths=0.5, color="#f08080",
-                label=r"$\bf{ExD}$" + " Datasets")
-    plt.scatter(train_x.reshape(-1, 1), train_y, marker="+", alpha=0.5, linewidths=0.75, color="#A7C7E7",
-                label=r"$\bf{InD}$" + " Datasets")
-    plt.plot(all_x.reshape(-1, 1), all_pred_y_train, "b", label=r"$\bf{In}$" + "terior " + r"$\bf{D}$" + "omain Fit")
-    plt.plot(all_x.reshape(-1, 1), all_pred_y_val, "r", label=r"$\bf{Ex}$" + "terior " + r"$\bf{D}$" + "omain Fit")
-
-    plt.legend(loc="best")
-    if output:
-        p = results_root / output
-        p.parents[0].mkdir(parents=True, exist_ok=True)
-        plt.savefig(str(results_root / output), format="svg")
-
-    if show_graphs:
-        plt.show()
-
-    plt.close("all")
-    return (lr_train_rmse_loss_train,
-            lr_val_rmse_loss_val,
-            lr_train_rmse_loss_val,
-            lr_train_r2_train,
-            lr_val_r2_val,
-            lr_train_r2_val
-            )
+                        dataset_name=dataset_name,
+                        batch_size=batch_size)
 
 
 def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, predictor_func, device=DEVICE,
-                    recalculate=False, dataset_name="cifar10"):
+                    recalculate=False, dataset_name="cifar10", batch_size=BATCH_SIZE):
     """
 
     :param data_root:
@@ -396,7 +247,7 @@ def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, p
     if is_leaf and ((not leaf_result_exists) or recalculate):
         # Leaf directory. Ignore anything else in here.
         evaluator = DatasetEvaluator(data_root, DSET_TRANSFORMS_EVAL[dataset_name])
-        score = evaluator.evaluate(model, predictor_func, device)
+        score = evaluator.evaluate(model, predictor_func, device, batch_size)
 
         temp_root.mkdir(parents=True, exist_ok=True)
 

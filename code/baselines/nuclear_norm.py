@@ -101,6 +101,7 @@ def main(dataset_name, model_name, data_root, results_path, dset_paths, **kwargs
                      10, # This doesn't matter.
                      nuclear_norm_pred,
                      load_best_fc=False,
+                     batch_size=None,
                      **kwargs)
 
 

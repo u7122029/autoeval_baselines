@@ -2,28 +2,20 @@ import argparse
 import sys
 sys.path.append(".")
 
-import numpy as np
 import torch
-from pathlib import Path
 
 from utils import (
     ensure_cwd,
     VALID_MODELS,
     VALID_DATASETS,
-    DEVICE,
     RESULTS_PATH_DEFAULT,
     DATA_PATH_DEFAULT,
     BATCH_SIZE,
-    PRINT_FREQ,
-    LEARN_RATE,
-    EPOCHS,
     WEIGHTS_PATH_DEFAULT,
     ORIGINAL_DATASET_ROOT_DEFAULT
 )
 
 from rotation import rotate_batch
-
-from training_utils import train_original_dataset, get_model, test_model, load_original_dataset
 from utils import generate_results
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Rotation Prediction")
@@ -100,16 +92,17 @@ def effective_invariance(yhat: torch.Tensor, yhat_t: torch.Tensor, phat, phat_t)
     :param phat_t:
     :return:
     """
-    return torch.mean((yhat == yhat_t).int() * torch.sqrt(phat * phat_t)).item()
+    return torch.mean((yhat == yhat_t).float() * torch.sqrt(phat * phat_t)).item()
 
 
-def rotation_inv_pred(dataloader, model, device, label_method="expand"):
+def rotation_inv_pred(dataloader, model, device, label_method="expand_exclude_id"):
     yhat = []
     yhat_t = []
     phat = []
     phat_t = []
     for imgs, _ in iter(dataloader):
-        imgs.to(device)
+        imgs = imgs.to(device)
+
         imgs_rot, _ = rotate_batch(imgs, label_method) # we don't care about the rotation labels.
         imgs_rot = imgs_rot.to(device)
 
@@ -117,26 +110,24 @@ def rotation_inv_pred(dataloader, model, device, label_method="expand"):
             out_class, _ = model(imgs)
             out_rot, _ = model(imgs_rot)
 
-            out_class_maxes = torch.max(out_class, dim=1)
+            if label_method == "expand_exclude_id":
+                # repeat each entry of out_class_preds 3 times.
+                out_class = out_class.repeat(3,1)
+
+            out_class_maxes = torch.max(torch.softmax(out_class, dim=1), dim=1)
             out_class_preds = out_class_maxes.indices
             out_class_confs = out_class_maxes.values
 
-            out_rot_maxes = torch.max(out_rot, dim=1)
+            out_rot_maxes = torch.max(torch.softmax(out_rot, dim=1), dim=1)
             out_rot_preds = out_rot_maxes.indices
             out_rot_confs = out_rot_maxes.values
-
-            if label_method == "expand":
-                # repeat each entry of out_class_preds 3 times.
-                #out_class_preds = torch.stack([out_class_preds for _ in range(4)], dim=1).flatten()
-                out_class_preds = out_class_preds.repeat(1, 3).flatten()
-                #out_class_confs = torch.stack([out_class_confs for _ in range(4)], dim=1).flatten()
-                out_class_confs = out_class_confs.repeat(1, 3).flatten()
 
             yhat.append(out_class_preds)
             yhat_t.append(out_rot_preds)
 
             phat.append(out_class_confs)
             phat_t.append(out_rot_confs)
+
     yhat = torch.concat(yhat)
     yhat_t = torch.concat(yhat_t)
     phat = torch.concat(phat)
