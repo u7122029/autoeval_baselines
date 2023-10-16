@@ -1,4 +1,4 @@
-# Is the Linear correlation Between Classification and Rotation/Jigsaw Prediction Model-Invariant?
+# Investigating the Effectiveness of Jigsaw Tiled Images for Estimating Classifier Accuracy.
 
 This is a fork of [the 1st DataCV Challenge](https://sites.google.com/view/vdu-cvpr23/competition?authuser=0)
 
@@ -23,9 +23,12 @@ This is a fork of [the 1st DataCV Challenge](https://sites.google.com/view/vdu-c
 
 ## Abstract
 
-We verify the linear relationship between image classification accuracy (classification) and rotation prediction accuracy
-(rotation) over the CIFAR-10 dataset and its variants. This extends previous work where the same correlation was 
-observed over numerous datasets but using only one fixed classifier for each. We also verify the same correlation with 
+We investigate the relationship between image classification accuracy (classification) and jigsaw invariance over the 
+CIFAR-10 dataset and its variants. This extends previous work where linear correlations of various strengths were 
+observed using other independent variables such as rotation prediction (rotation), jigsaw prediction (jigsaw), rotation
+invariance, and the nuclear norm. 
+
+We also verify the same correlation with 
 jigsaw solving accuracy (jigsaw) in place of rotation. For both comparisons, all models (except one) showed a strong 
 correlation over datasets constructed by directly using image transformations ($R^2 > 0.71$ for classification vs. 
 rotation, $R^2 > 0.61$ for classification vs. jigsaw). However, some models showed a weak linear correlation between 
@@ -37,23 +40,31 @@ this must be investigated further.
 
 Constructing a dataset of images for a supervised task such as classification requires generating labels for every
 image.
-Each image must be manually labelled by humans. Furthermore, the most accurate computer vision machine learning models
-required tens of thousands, perhaps even millions of images to train on. This makes labelling images a time-consuming,
-repetitive and laborious task without much obvious potential for automation.
+Each image must be manually labelled by humans. Furthermore, the most complex computer vision machine learning models
+require tens of thousands, perhaps even millions of images to train on. This makes labelling images a time-consuming,
+repetitive and laborious task with room for error due to fatigue (ADD REF).
 
 One way to automate this task is to computationally generate labels for these images, however, current machine learning
 models are generally not as accurate as the human brain at identifying images. Computers on the other hand are generally
-good at performing image transformations such as rotations, jigsaw-making (dividing the image into a grid of squares and
-rearranging the squares, hence constructing a jigsaw puzzle), blurring, sharpening, and many more operations.
+good at performing deterministic algorithms such as image transformations which include rotations, jigsaw-making 
+(dividing the image into a grid of squares and rearranging them, hence constructing a jigsaw puzzle), blurring, 
+sharpening, and many more operations.
 
 In this way, we can ask ourselves whether there is a correlation of some form between a model's performance at a
-supervised task such as image classification and said model's performance at some self-supervised task, such as rotation
-prediction - predicting the orientation of an image - or jigsaw puzzle solving - predicting the permutation of a
-jigsaw-made image. For both tasks, labels can easily be generated accurately by a computer without human intervention -
-hence the name "self-supervision". If there is a correlation, we can then judge the classification accuracy of a model
-given its performance on a self-supervised task. In a broader sense, it will be much easier to verify if a given
-supervised task can have a model fitted to it with sufficiently high performance - all before any time or human
-resources are spent generating labels.
+supervised task such as image classification and said model's performance at some self-supervised or unsupervised task, 
+such as
+- rotation prediction - predicting the orientation of an image,
+- jigsaw puzzle solving - predicting the permutation of a jigsaw-made image,
+- rotation invariance - a comparison between image classification on regular images and their rotated counterparts,
+- jigsaw invariance - the same comparison but for jigsaw-made images,
+- nuclear norm - using the singular values of the compiled softmax prediction vectors.
+
+For rotation prediction and jigsaw puzzle solving, labels can easily be generated accurately by a computer without 
+human intervention - hence the name "self-supervision". The other tasks do not require image labels, so these are known 
+as "unsupervised" tasks. If there is a correlation between image classification accuracy and any of these tasks, we can 
+then estimate a model's classification accuracy given its performance on any of these tasks.
+In a broader sense, it will be much easier to verify if a given supervised task can have a model fitted to it with 
+sufficiently high performance - all before any time or human resources are spent generating labels.
 
 ## Datasets
 
@@ -61,11 +72,11 @@ resources are spent generating labels.
 
 Every model was trained on the original [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset for
 classification
-without any transformations applied to each image aside from normalisation.
+without any transformations applied to each image aside from standardisation.
 
 ### Interior Domain
 
-The interior domain contains 1,000 transformed datasets from the original
+The interior domain contains 2400 transformed datasets from the original
 [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) test set, using the transformation strategies proposed by
 [Deng et al. (2021)](https://github.com/Simon4Yan/Meta-set).
 

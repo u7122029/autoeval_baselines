@@ -12,6 +12,7 @@ from utils import (generate_results,
                    DEVICE)
 
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
 parser = argparse.ArgumentParser(description="AutoEval baselines - Nuclear Norm Baseline")
 parser.add_argument(
@@ -74,7 +75,7 @@ def nuclear_norm(probs):
     return (s.sum() / np.sqrt(min(probs.shape) * probs.shape[0])).item()
 
 
-def nuclear_norm_pred(dataloader, model, device):
+def nuclear_norm_pred(dataloader: DataLoader, model, device):
     """
     Predictor function for the nuclear norm baseline.
     :param dataloader: The dataloader (only has one batch that is the size of the entire dataset)
@@ -82,6 +83,7 @@ def nuclear_norm_pred(dataloader, model, device):
     :param device: the device
     :return: the nuclear norm for the dataloader.
     """
+    assert len(dataloader.dataset) == dataloader.batch_size
     batches = iter(dataloader)
     batch, labels = next(batches)
     batch = batch.to(device)

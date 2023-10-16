@@ -80,7 +80,6 @@ DSET_TRANSFORMS_TRAIN = {
 }
 
 VALID_MODELS = [
-    "resnet20",  # rotation, jigsaw done
     "resnet32",  # rotation, jigsaw done
     "mobilenetv2",  # rotation, jigsaw done
     "densenet121",  # rotation, jigsaw done
@@ -94,6 +93,7 @@ VALID_MODELS = [
     "resnet110",  # rotation, jigsaw done
     "densenet161",  # rotation, jigsaw done
     "densenet169",  # rotation, jigsaw done
+    "resnet20",  # rotation, jigsaw done
     "resnet1202"  # rotation, jigsaw done
 ]
 
@@ -273,7 +273,7 @@ def dataset_recurse(data_root: Path, temp_root: Path, name: str, model: Model, p
             continue
         entity = path.parts[-1]
         dataset_recurse(data_root / entity, temp_root / entity, name, model, predictor_func, device, recalculate,
-                        dataset_name=dataset_name)
+                        dataset_name=dataset_name, batch_size=batch_size)
         loaded = np.load(str(temp_root / entity / f"{model.model_name}.npz"))[name]
         out.append(loaded)
     out = np.concatenate(out)
