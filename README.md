@@ -1,4 +1,4 @@
-# Investigating the Effectiveness of Jigsaw Tiled Images for Estimating Classifier Accuracy.
+# Can Effective Invariance Metrics Predict Classifier Accuracy on a Data-Centric View?
 
 This is a fork of [the 1st DataCV Challenge](https://sites.google.com/view/vdu-cvpr23/competition?authuser=0)
 
@@ -23,18 +23,19 @@ This is a fork of [the 1st DataCV Challenge](https://sites.google.com/view/vdu-c
 
 ## Abstract
 
-We investigate the relationship between image classification accuracy (classification) and jigsaw invariance over the 
-CIFAR-10 dataset and its variants. This extends previous work where linear correlations of various strengths were 
-observed using other independent variables such as rotation prediction (rotation), jigsaw prediction (jigsaw), rotation
-invariance, and the nuclear norm. 
+We investigate the relationship between image classification accuracy (classification) and jigsaw invariance (JI) over the 
+CIFAR-10 dataset and its variants. This provides extra insight into using metrics derived from Effective Invariance (EI) to predict classification accuracy
+where labels for a given dataset are not provided to help determine a classifier's performance over it. We also compare the strength of the correlation between classification and JI with other metrics such as rotation invariance (RI), rotation prediction (rotation), jigsaw prediction (jigsaw) and the nuclear norm. We find that there is no clear
+correlation between classification and JI, which is consistent with classification vs. RI. Most models showed inconsistent results over both metrics, while the correlation was more consistent but moderately strong with rotation and jigsaw as the independent variables. Meanwhile the correlation was strongest with the nuclear norm as the independent variable, which could be made stronger with the natural logarithm taken on classification. This overall shows that a model's classification accuracy cannot be reliably predicted using JI or RI, but rather with the nuclear norm.
 
-We also verify the same correlation with 
+
+<!--We also verify the same correlation with 
 jigsaw solving accuracy (jigsaw) in place of rotation. For both comparisons, all models (except one) showed a strong 
 correlation over datasets constructed by directly using image transformations ($R^2 > 0.71$ for classification vs. 
 rotation, $R^2 > 0.61$ for classification vs. jigsaw). However, some models showed a weak linear correlation between 
 classification and rotation/jigsaw accuracy on images outside of CIFAR-10. This suggests that the effectiveness of 
 estimating a model's classification accuracy based on rotation/jigsaw accuracy depends on the model itself, however, 
-this must be investigated further.
+this must be investigated further.-->
 
 ## Overview
 
@@ -42,7 +43,7 @@ Constructing a dataset of images for a supervised task such as classification re
 image.
 Each image must be manually labelled by humans. Furthermore, the most complex computer vision machine learning models
 require tens of thousands, perhaps even millions of images to train on. This makes labelling images a time-consuming,
-repetitive and laborious task with room for error due to fatigue (ADD REF).
+repetitive and laborious task with room for human error.
 
 One way to automate this task is to computationally generate labels for these images, however, current machine learning
 models are generally not as accurate as the human brain at identifying images. Computers on the other hand are generally
@@ -57,7 +58,7 @@ such as
 - jigsaw puzzle solving - predicting the permutation of a jigsaw-made image,
 - rotation invariance - a comparison between image classification on regular images and their rotated counterparts,
 - jigsaw invariance - the same comparison but for jigsaw-made images,
-- nuclear norm - using the singular values of the compiled softmax prediction vectors.
+- nuclear norm - using the sum singular values of the compiled softmax prediction vectors.
 
 For rotation prediction and jigsaw puzzle solving, labels can easily be generated accurately by a computer without 
 human intervention - hence the name "self-supervision". The other tasks do not require image labels, so these are known 
@@ -80,29 +81,17 @@ The interior domain contains 2400 transformed datasets from the original
 [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) test set, using the transformation strategies proposed by
 [Deng et al. (2021)](https://github.com/Simon4Yan/Meta-set).
 
-The interior domain datasets share a common label file named `labels.npy`, and image files are
-named `new_data_xxx.npy`,
-where `xxx` is a number from 000 to 999.
-
 ### Exterior Domain
 
 The exterior domain contains datasets from
 
 - [CIFAR-10.1](https://github.com/modestyachts/CIFAR-10.1) (1 dataset),
-- CIFAR-10.1-C - the original CIFAR-10.1 dataset but with image transformations applied:
-  - Robustness [(Hendrycks et al., 2019)](https://github.com/hendrycks/robustness) (x datasets)
-  - Meta-Set [(Deng et al., 2021)](https://github.com/Simon4Yan/Meta-set) (y datasets)
-  - Augmentation-Corruption [(Mintun et al., 2021)](https://github.com/facebookresearch/augmentation-corruption) (z datasets)
+- CIFAR-10.1-C - the original CIFAR-10.1 dataset but with image transformations from [(Hendrycks et. al., 2019)](https://github.com/hendrycks/robustness) applied (95 datasets)
 - [CIFAR-10.2](https://github.com/modestyachts/CIFAR-10.2)
-- CIFAR-10.2-C - the original CIFAR-10.2 dataset but with image transformations applied:
-  - Robustness [(Hendrycks et al., 2019)](https://github.com/hendrycks/robustness) (x datasets)
-  - Meta-Set [(Deng et al., 2021)](https://github.com/Simon4Yan/Meta-set) (y datasets)
-  - Augmentation-Corruption [(Mintun et al., 2021)](https://github.com/facebookresearch/augmentation-corruption) (z datasets)
-- CIFAR-10-F - real-world images collected from [Flickr](https://www.flickr.com))
-- CIFAR-10-F-C - uses the exact same images as CIFAR-10-F but with image transformations applied:
-  - Robustness [(Hendrycks et al., 2019)](https://github.com/hendrycks/robustness) (x datasets)
-  - Meta-Set [(Deng et al., 2021)](https://github.com/Simon4Yan/Meta-set) (y datasets)
-  - Augmentation-Corruption [(Mintun et al., 2021)](https://github.com/facebookresearch/augmentation-corruption) (z datasets)
+- CIFAR-10.2-C - the original CIFAR-10.2 dataset but with image transformations from [(Hendrycks et. al., 2019)](https://github.com/hendrycks/robustness) applied (95 datasets)
+- CIFAR-10-F-32 - real-world images collected from [Flickr](https://www.flickr.com) compiled by [(Sun et. al., 2019)](https://github.com/sxzrt/CIFAR-10-W#cifar-10-warehouse-towards-broad-and-more-realistic-testbeds-in-model-generalization-analysis), resized to 32 by 32 images. (20 datasets)
+- CIFAR-10-F-C - uses the exact same images as CIFAR-10-F-32 but with image transformations from [(Hendrycks et al., 2019)](https://github.com/hendrycks/robustness) applied (1900 datasets)
+- CIFAR-10-W - Datasets obtained from various sources as well as through diffusion models.
 
 The CIFAR-10.1 dataset is a single dataset, while CIFAR-10.1-C and CIFAR-10-F contain 19 and 20 datasets respectively.
 Therefore, the total number of datasets in the exterior domain is 40.
@@ -216,142 +205,4 @@ The tables in each section below show the results of the linear models fitting t
 [Coefficient of Determination](https://en.wikipedia.org/wiki/Coefficient_of_determination) ($R^2$ Coefficient).
 
 All tables are sorted in descending order by $R^2$ coefficient.
-
-### Interior Domain
-
-#### Rotation
-
-| model       | R^2 (Interior Domain LR) | RMSE (Interior Domain LR) |   No. Parameters |
-|-------------|--------------------------|---------------------------|------------------|
-| densenet121 | 0.9759                   | 3.0703                    |              364 |
-| resnet32    | 0.9635                   | 2.8954                    |              101 |
-| resnet56    | 0.9592                   | 3.0014                    |              173 |
-| resnet44    | 0.9577                   | 3.1458                    |              137 |
-| resnet1202  | 0.9556                   | 2.7753                    |             3605 |
-| densenet161 | 0.9509                   | 4.4646                    |              484 |
-| shufflenet  | 0.9479                   | 3.7456                    |              170 |
-| resnet110   | 0.9402                   | 4.174                     |              329 |
-| repvgg      | 0.9344                   | 5.2548                    |              170 |
-| densenet169 | 0.9338                   | 5.0891                    |              508 |
-| mobilenetv2 | 0.9269                   | 4.6029                    |              158 |
-| resnet20    | 0.9218                   | 4.4542                    |               65 |
-| inceptionv3 | 0.8202                   | 8.4792                    |              272 |
-| linear      | 0.7647                   | 2.9008                    |                2 |
-| alexnet     | 0.761                    | 4.2106                    |               16 |
-| lenet5      | 0.7192                   | 4.4566                    |               14 |
-| obc         | 0                        | 1.9596                    |                2 |
-
-#### Jigsaw
-
-| model       | R^2 (Interior Domain LR) | RMSE (Interior Domain LR) |   No. Parameters |
-|-------------|--------------------------|---------------------------|------------------|
-| resnet110   | 0.9169                   | 4.9211                    |              329 |
-| resnet1202  | 0.8918                   | 4.3332                    |             3605 |
-| resnet44    | 0.8916                   | 5.0361                    |              137 |
-| repvgg      | 0.891                    | 6.7776                    |              170 |
-| densenet169 | 0.8721                   | 7.0742                    |              508 |
-| densenet161 | 0.8652                   | 7.398                     |              484 |
-| resnet56    | 0.8486                   | 5.7829                    |              173 |
-| resnet32    | 0.8284                   | 6.2761                    |              101 |
-| densenet121 | 0.823                    | 8.3171                    |              364 |
-| shufflenet  | 0.8177                   | 7.0041                    |              170 |
-| inceptionv3 | 0.8069                   | 8.7868                    |              272 |
-| mobilenetv2 | 0.8012                   | 7.5913                    |              158 |
-| lenet5      | 0.7983                   | 3.777                     |               14 |
-| alexnet     | 0.7657                   | 4.1693                    |               16 |
-| resnet20    | 0.7531                   | 7.9134                    |               65 |
-| linear      | 0.6167                   | 3.7024                    |                2 |
-| obc         | 0.0002                   | 1.9594                    |                2 |
-
-### Exterior Domain
-
-#### Rotation
-
-| model       | R^2 (Exterior Domain LR) | RMSE (Exterior Domain LR) |   No. Parameters |
-|-------------|--------------------------|---------------------------|------------------|
-| resnet44    | 0.7787                   | 5.6932                    |              137 |
-| densenet121 | 0.7574                   | 4.8347                    |              364 |
-| alexnet     | 0.7455                   | 2.8506                    |               16 |
-| resnet32    | 0.741                    | 5.8803                    |              101 |
-| mobilenetv2 | 0.7337                   | 6.884                     |              158 |
-| densenet169 | 0.7259                   | 5.4075                    |              508 |
-| shufflenet  | 0.6967                   | 5.9666                    |              170 |
-| repvgg      | 0.6488                   | 7.3129                    |              170 |
-| resnet56    | 0.6467                   | 6.6604                    |              173 |
-| resnet1202  | 0.6368                   | 6.4933                    |             3605 |
-| resnet110   | 0.6265                   | 5.6298                    |              329 |
-| densenet161 | 0.5908                   | 5.5834                    |              484 |
-| resnet20    | 0.4342                   | 8.4589                    |               65 |
-| inceptionv3 | 0.3473                   | 8.6571                    |              272 |
-| linear      | 0.2157                   | 3.3299                    |                2 |
-| lenet5      | 0.0042                   | 4.922                     |               14 |
-| obc         | 0                        | 1.8492                    |                2 |
-
-#### Jigsaw
-
-| model       | R^2 (Exterior Domain LR) | RMSE (Exterior Domain LR) |   No. Parameters |
-|-------------|--------------------------|---------------------------|------------------|
-| mobilenetv2 | 0.5254                   | 9.1901                    |              158 |
-| resnet32    | 0.4956                   | 8.2067                    |              101 |
-| resnet56    | 0.4314                   | 8.4495                    |              173 |
-| linear      | 0.399                    | 2.9149                    |                2 |
-| resnet44    | 0.3857                   | 9.4856                    |              137 |
-| resnet110   | 0.3651                   | 7.3405                    |              329 |
-| resnet1202  | 0.317                    | 8.9047                    |             3605 |
-| repvgg      | 0.2626                   | 10.596                    |              170 |
-| densenet161 | 0.2247                   | 7.6857                    |              484 |
-| alexnet     | 0.1634                   | 5.1686                    |               16 |
-| densenet169 | 0.1559                   | 9.4892                    |              508 |
-| resnet20    | 0.0815                   | 10.7777                   |               65 |
-| shufflenet  | 0.0756                   | 10.4172                   |              170 |
-| lenet5      | 0.0457                   | 4.8185                    |               14 |
-| densenet121 | 0.0372                   | 9.6315                    |              364 |
-| inceptionv3 | 0.0327                   | 10.5383                   |              272 |
-| obc         | 0.0119                   | 1.8381                    |                2 |
-
-### Exterior Domain with Interior Domain Fit
-
-#### Rotation
-
-| model       | R^2 (Ext. Dom. w/ Int. Dom. LR) | RMSE (Ext. Dom. w/ Int. Dom. LR) |   No. Parameters |
-|-------------|---------------------------------|----------------------------------|------------------|
-| alexnet     | 0.7266                          | 2.9545                           |               16 |
-| resnet32    | 0.706                           | 6.2656                           |              101 |
-| resnet44    | 0.7039                          | 6.585                            |              137 |
-| repvgg      | 0.6295                          | 7.5112                           |              170 |
-| densenet121 | 0.5837                          | 6.3333                           |              364 |
-| mobilenetv2 | 0.519                           | 9.252                            |              158 |
-| resnet1202  | 0.4952                          | 7.6551                           |             3605 |
-| resnet56    | 0.4449                          | 8.3488                           |              173 |
-| resnet20    | 0.4248                          | 8.5287                           |               65 |
-| densenet161 | 0.3994                          | 6.7649                           |              484 |
-| shufflenet  | 0.2967                          | 9.0862                           |              170 |
-| inceptionv3 | 0.1754                          | 9.7304                           |              272 |
-| densenet169 | 0.0621                          | 10.0026                          |              508 |
-| resnet110   | -0.206                          | 10.1167                          |              329 |
-| lenet5      | -0.481                          | 6.0026                           |               14 |
-| linear      | -1.3115                         | 5.7166                           |                2 |
-| obc         | -5.1408                         | 4.5824                           |                2 |
-
-#### Jigsaw
-
-| model       | R^2 (Ext. Dom. w/ Int. Dom. LR) | RMSE (Ext. Dom. w/ Int. Dom. LR) |   No. Parameters |
-|-------------|---------------------------------|----------------------------------|------------------|
-| mobilenetv2 | 0.4531                          | 9.8652                           |              158 |
-| resnet32    | 0.4454                          | 8.6054                           |              101 |
-| resnet56    | 0.3434                          | 9.0799                           |              173 |
-| resnet44    | 0.1312                          | 11.2802                          |              137 |
-| alexnet     | -0.0896                         | 5.8986                           |               16 |
-| repvgg      | -0.1504                         | 13.235                           |              170 |
-| lenet5      | -0.2674                         | 5.5529                           |               14 |
-| shufflenet  | -0.3547                         | 12.6106                          |              170 |
-| resnet110   | -0.4204                         | 10.9792                          |              329 |
-| resnet20    | -0.4587                         | 13.5818                          |               65 |
-| resnet1202  | -0.5145                         | 13.2599                          |             3605 |
-| densenet169 | -0.8268                         | 13.9598                          |              508 |
-| densenet121 | -1.3413                         | 15.0196                          |              364 |
-| inceptionv3 | -2.2331                         | 19.2668                          |              272 |
-| linear      | -2.2482                         | 6.7766                           |                2 |
-| densenet161 | -3.0118                         | 17.4833                          |              484 |
-| obc         | -5.138                          | 4.5813                           |                2 |
 
