@@ -83,13 +83,14 @@ def nuclear_norm_pred(dataloader: DataLoader, model, device):
     :param device: the device
     :return: the nuclear norm for the dataloader.
     """
-    assert len(dataloader.dataset) == dataloader.batch_size
-    batches = iter(dataloader)
-    batch, labels = next(batches)
-    batch = batch.to(device)
+    class_probs = torch.zeros((len(dataloader.dataset), 10)).to(device)
+    offset = 0
+    for batch, _ in dataloader:
+        batch = batch.to(device)
 
-    class_preds, _ = model(batch)
-    class_probs = F.softmax(class_preds, dim=1)
+        class_preds, _ = model(batch)
+        class_probs[offset:offset + len(batch),:] = F.softmax(class_preds, dim=1)
+        offset += len(batch)
     return nuclear_norm(class_probs)
 
 
@@ -103,7 +104,7 @@ def main(dataset_name, model_name, data_root, results_path, dset_paths, **kwargs
                      10, # This doesn't matter.
                      nuclear_norm_pred,
                      load_best_fc=False,
-                     batch_size=None,
+                     batch_size=100,
                      **kwargs)
 
 

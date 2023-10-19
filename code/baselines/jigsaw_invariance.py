@@ -110,7 +110,6 @@ def jigsaw_inv_pred(dataloader, model, device, int_to_perm, grid_length, label_m
     phat_t = []
     for imgs, _ in iter(dataloader):
         imgs = imgs.to(device)
-
         imgs_rot, _ = jigsaw_batch(imgs,
                                    len(int_to_perm),
                                    int_to_perm,

@@ -109,7 +109,6 @@ def rotation_inv_pred(dataloader, model, device, label_method="expand_exclude_id
         with torch.no_grad():
             out_class, _ = model(imgs)
             out_rot, _ = model(imgs_rot)
-
             if label_method == "expand_exclude_id":
                 # repeat each entry of out_class_preds 3 times.
                 out_class = out_class.repeat(3,1)

@@ -9,21 +9,20 @@
 \postersize{a0paper}
 
 % authors
-\title{Is the Linear Correlation Between Classification and Rotation/Jigsaw Prediction Model-Invariant?}
+\title{Can Effective Invariance Metrics Predict Classifier Accuracy in a Data-Centric View?}
 \author{Callum Koh}
 
 % type of poster: [exp]erimental results, [methods], [theory]
 % Disclaimer: the original classification had "study" and "intervention" as separate categories. I group them under experimental results.
-\newcommand\postertype{imperialblue} % [exp],[methods],[theory]
+\newcommand\postertype{empirical} % [exp],[methods],[theory]
 
 \begin{document}
 
 % main point of your study
 \makefinding{
-There is a \textbf{Strong Linear Correlation}
-\\between \textbf{Image Classification} Accuracy
-\\and \textbf{Jigsaw Solving/Rotation Prediction} Accuracy,
-\\for \textbf{Almost All} Classification Models
+We're Investigating the \textbf{Relationship}\\ 
+between \textbf{Image Classification Accuracy}\\ 
+and \textbf{Other Self-Supervised/Unsupervised Metrics}.
 }
 
 
@@ -36,57 +35,53 @@ There is a \textbf{Strong Linear Correlation}
         \section{Intro}
         \vspace{-0.3cm}
         \begin{compactitem}
-            \item In real world, classifier will encounter data different from training.
-            \item Will likely perform poorly.
-            \item Need samples of this data with labels for improvement.
-            \item Adding labels to images is laborious.
-            \item \textbf{Can gauge classification accuracy from rotation or jigsaw prediction.}
-        \end{compactitem}
-        \begin{compactitem}
-            \item \textbf{Linear relationship only shown using one model for one dataset.}
-            \item \textbf{Must be tested with one dataset and many models.}
+            \item Image classification models require many images outside training to understand their generalisability.
+            \item Adding labels to images is laborious and time-consuming.
+            \item \textbf{Exists many reliable metrics} such as Rotation Invariance (RI) for \textbf{gauging image classification accuracy.}
+            \item We \textbf{compare} above metrics \textbf{with our own jigsaw invariance} metric.
         \end{compactitem}
         \vspace{0.34cm}
         \begin{compactitem}
             \item CIFAR-10 dataset has 60,000 images, 1 of 10 unique objects in each.
             \item Includes planes, frogs, boats, etc.
+            \item Small images promote simplicity in proof of concepts such as ours.
         \end{compactitem}
         \vspace{-0.4cm}
-        \section{Method}
+        \section{Data Used}
         \vspace{-0.3cm}
         \begin{compactitem}
-            \item[1.] Use CIFAR-10 dataset,
-            \item[2.] Take pretrained image classifier,
-            \item[3.] Fix weights of all layers,
-            \item[4.] Train new fully-connected layer for rotation/jigsaw prediction,
-            \item[5.] Test classification and rotation/jigsaw on corrupted CIFAR-10 datasets,
-            \item[6.] Repeat for 16 other models.
+            \item In-distribution (ID) CIFAR-10 test set + its copies via. image transforms,
+            \item Various out-of-distribution (OOD) CIFAR-10 variants + its copies through image transforms.
         \end{compactitem}
-        \vspace{0.3cm}
-        \includegraphics[scale=0.145]{images/diagram.png}
+        \vspace{-0.4cm}
+        \section{Jigsaw Invariance (JI)}
+        \begin{compactenum}
+            \item Classifier takes image \(x\), outputting predicted class \(\hat{y}\) and confidence \(\hat{p}\).
+            \item Turn \(x\) into jigsaw puzzle \(x_t\).
+            \item Feed \(x_t\) into model, outputting associated \(\hat{y}_t\) and \(\hat{p}_t\).
+            \item Same \(\hat{y}\) and \(\hat{y}_t\) with high \(\hat{p}\) and high \(\hat{p}_t\) implies high JI, and vice versa.
+            \item Take mean average JI over all images \(x\) in dataset.
+        \end{compactenum}
+        
         
     % this determines where your columns will be separated
     \columnbreak
-
         \section{Results}
         \vspace{-0.3cm}
         \includegraphics[scale=0.44]{images/sample1.png}
         \begin{compactitem}
-            \item \textbf{Linear correlation on both tasks and both domains}, \textit{for all but one model.}
-            \item Even simplest models showed medium to strong fit.
-            \item Linear Fit in Interior Domain doesn't always hold in Exterior Domain.
+            \item \textbf{No relationship between image classification accuracy and JI}, contrary to past observations.
+            \item JI and RI derive from Effective Invariance (EI). Correlation shown only when dataset fixed + each point is a model (model-centric).
+            \item CIFAR-10 uses 32 by 32 images - small size introduces biases.
         \end{compactitem}
         \vspace{-0.4cm}
         \section{Future Work}
         \vspace{-0.3cm}
         \begin{compactitem}
-            \item Test more classifiers.
-            \item Apply method to other datasets e.g: ImageNet, COCO, MNIST, etc.
-            \item Test other self-supervised methods eg: image colourisation.
+            \item Adopt model-centric view instead of dataset-centric,
+            \item Use dataset with larger images, such as ImageNet,
+            \item In this way possibly obtain better comparison between JI and other metrics.
         \end{compactitem}
-        \vspace{0.3cm}
-        \includegraphics[scale=0.145]{images/diagram1.png}
-    
     \end{multicols}
 }
 % If you have extra figures or data to show
@@ -106,10 +101,14 @@ There is a \textbf{Strong Linear Correlation}
     \includegraphics[scale=0.16]{images/sample6.png}\includegraphics[scale=0.16]{images/sample7.png}
 
     \vspace{0.3cm}
-    Interior Domain = Modified versions of original dataset for model training. Also includes original dataset.
-    
-    Exterior Domain = Variants of original dataset eg: CIFAR-10.1.
-
+    EI over a single image.
+    \[
+        \text{EI}(\hat{y},\hat{y}_t,\hat{p},\hat{p}_t) = \mathbf{1}(\hat{y}=\hat{y}_t)\sqrt{\hat{p}\cdot\hat{p}_t}
+    \]
+    EI for a whole dataset \(D\).
+    \[
+        \text{EI}_D = \frac{1}{|D|}\sum_{x \in D}EI(\hat{y},\hat{y}_t,\hat{p},\hat{p}_t)
+    \]
     \end{flushleft}
 }
 
