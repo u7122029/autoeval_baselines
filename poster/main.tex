@@ -22,7 +22,7 @@
 \makefinding{
 We're Investigating the \textbf{Relationship}\\ 
 between \textbf{Image Classification Accuracy}\\ 
-and \textbf{Other Self-Supervised/Unsupervised Metrics}.
+and \textbf{Various Self-Supervised/Unsupervised Metrics}.
 }
 
 
@@ -35,7 +35,7 @@ and \textbf{Other Self-Supervised/Unsupervised Metrics}.
         \section{Intro}
         \vspace{-0.3cm}
         \begin{compactitem}
-            \item Image classification models require many images outside training to understand their generalisability.
+            \item Image classification models need many images outside training to understand generalisability.
             \item Adding labels to images is laborious and time-consuming.
             \item \textbf{Exists many reliable metrics} such as Rotation Invariance (RI) for \textbf{gauging image classification accuracy.}
             \item We \textbf{compare} above metrics \textbf{with our own jigsaw invariance} metric.
@@ -68,11 +68,14 @@ and \textbf{Other Self-Supervised/Unsupervised Metrics}.
     \columnbreak
         \section{Results}
         \vspace{-0.3cm}
-        \includegraphics[scale=0.44]{images/sample1.png}
+        \includesvg[scale=0.44]{images/r32ji.svg}
         \begin{compactitem}
-            \item \textbf{No relationship between image classification accuracy and JI}, contrary to past observations.
+            \item \textbf{Weak Relationship between image classification and JI}.
+            \item Better correlation than RI.
+            \item Strength depends on permutations selected.
             \item JI and RI derive from Effective Invariance (EI). Correlation shown only when dataset fixed + each point is a model (model-centric).
             \item CIFAR-10 uses 32 by 32 images - small size introduces biases.
+            \item Nuclear norm remains most effective metric for estimating classification accuracy.
         \end{compactitem}
         \vspace{-0.4cm}
         \section{Future Work}
@@ -80,25 +83,23 @@ and \textbf{Other Self-Supervised/Unsupervised Metrics}.
         \begin{compactitem}
             \item Adopt model-centric view instead of dataset-centric,
             \item Use dataset with larger images, such as ImageNet,
-            \item In this way possibly obtain better comparison between JI and other metrics.
+            \item May obtain better comparison between JI and other metrics.
         \end{compactitem}
     \end{multicols}
 }
 % If you have extra figures or data to show
 \makeextracolumn{
     \begin{flushleft}
-    Linear Classifier - Jigsaw (Simplest)
-    \includegraphics[scale=0.16]{images/sample3.png}\includegraphics[scale=0.16]{images/sample2.png}
-    LeNet5 - Jigsaw
-    \includegraphics[scale=0.16]{images/sample8.png}\includegraphics[scale=0.16]{images/sample9.png}
-    ShuffleNet - Rotation
-    \includegraphics[scale=0.16]{images/sample10.png}\includegraphics[scale=0.16]{images/sample11.png}
-    Inception\_v3 - Rotation
-    \includegraphics[scale=0.16]{images/sample4.png}\includegraphics[scale=0.16]{images/sample5.png}
-    DenseNet169 - Jigsaw
-    \includegraphics[scale=0.16]{images/sample12.png}\includegraphics[scale=0.16]{images/sample13.png}
-    ResNet1202 - Jigsaw (Most Complex)
-    \includegraphics[scale=0.16]{images/sample6.png}\includegraphics[scale=0.16]{images/sample7.png}
+    ResNet56 - Rotation Invariance
+    \includesvg[scale=0.34]{images/r56ri.svg}
+
+    ResNet20 - Nuclear Norm with \(\ln\) Classification
+    \includesvg[scale=0.34]{images/r20nn_exp.svg}
+
+    ResNet32 - Rotation Prediction
+    \includesvg[scale=0.34]{images/r32r.svg}
+    
+    Other models over each metric produced similar results.
 
     \vspace{0.3cm}
     EI over a single image.
@@ -115,5 +116,5 @@ and \textbf{Other Self-Supervised/Unsupervised Metrics}.
 % footer
 % generate qr code from https://www.qr-code-generator.com/ and replace qr_code.png
 % default: barcode on the left
-\makefooter{images/uni_logo1.png}{images/paperqr.png}
+\makefooter{images/uni_logo1.png}{images/qrcode.png}
 \end{document}

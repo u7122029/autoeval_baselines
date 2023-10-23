@@ -173,12 +173,12 @@ def construct_permutation_mappings(grid_length: int, num_out_perms=None):
 
     spacing = max_permutations // num_out_perms
     out = [] # originally was an empty dictionary.
-    for i in range(0, max_permutations, spacing):
+    for i in range(0, max_permutations):
         if len(out) == num_out_perms: break
 
         raw_perm = next(perms)
-        if i % spacing != 0: continue
-
+        if i % spacing != 0:
+            continue
         perm = torch.Tensor(raw_perm).long()
         out.append({"perm": perm, "inverse": inverse_permutation(perm)})
 

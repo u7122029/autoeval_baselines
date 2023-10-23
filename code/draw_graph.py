@@ -108,15 +108,15 @@ def fit_lr(train_x,
            output: Path = None,
            dataset_name="cifar10",
            y_transform: int = None):
-    if y_transform == EXPONENTIAL:
+    print(len(train_y), len(val_y))
+    if y_transform == LOGARITHMIC:
         train_y = np.log(train_y)
         val_y = np.log(val_y)
         y_task = f"ln({y_task})"
-    elif y_transform == LOGARITHMIC:
+    elif y_transform == EXPONENTIAL:
         train_y = np.exp(train_y)
         val_y = np.exp(val_y)
         y_task = f"exp({y_task})"
-
     lr_train = LinearRegression()
     lr_train.fit(train_x.reshape(-1, 1), train_y)
 
@@ -146,7 +146,7 @@ def fit_lr(train_x,
     grid = [["Metric", "Training Set", "Validation Set (Val LR)", "Validation Set (Train LR)"],
             ["R^2", f"{lr_train_r2_train:.4f}", f"{lr_val_r2_val:.4f}", f"{lr_train_r2_val:.4f}"],
             ["rho", f"{lr_train_sp_train:.4f}", f"{lr_val_sp_val:.4f}", f"{lr_train_sp_val:.4f}"],
-            ["RMSE", f"{lr_train_rmse_loss_train:.4f}", f"{lr_val_rmse_loss_val:.4f}", f"{lr_train_rmse_loss_val:.4f}"]
+            ["MSE", f"{lr_train_rmse_loss_train:.4f}", f"{lr_val_rmse_loss_val:.4f}", f"{lr_train_rmse_loss_val:.4f}"]
             ]
     print(tabulate(grid, headers="firstrow", tablefmt="psql"))
 
@@ -169,9 +169,9 @@ def fit_lr(train_x,
 
     plt.legend(loc="best")
     if output:
-        p = results_root / output
+        p = results_root / "figures" / f"{model_name}_{x_task}.svg"
         p.parents[0].mkdir(parents=True, exist_ok=True)
-        plt.savefig(str(results_root / output), format="svg")
+        plt.savefig(str(p), format="svg")
 
     if show_graphs:
         plt.show()

@@ -23,17 +23,32 @@ if __name__ == "__main__":
     dataset = "cifar10"
     dsets = ["train_data", "val_data"]
     int_to_perm = jigsaw.construct_permutation_mappings(2, 4)
+    redo_models = {"resnet20", "repvgg"}
+    redo_models1 = {'repvgg'}
     for model_name in VALID_MODELS:
         print(f"Current model: {model_name}")
+        print(f"Performing rotation invariance. ({model_name})")
+        ri.main(dataset, model_name, "rotation_invariance", DATA_PATH_DEFAULT, RESULTS_PATH_DEFAULT, dsets, 4,
+                ri.rotation_inv_pred, recalculate_results=False if model_name not in redo_models else True)
         print(f"Performing image classification. ({model_name})")
         classification.main(dataset, model_name, "classification", DATA_PATH_DEFAULT, RESULTS_PATH_DEFAULT, dsets, 4,
                             classification.calculate_acc)
+        print(f"Performing jigsaw invariance. ({model_name})")
+        ji.main(dataset,
+                model_name,
+                "jigsaw_invariance",
+                DATA_PATH_DEFAULT,
+                RESULTS_PATH_DEFAULT,
+                dsets,
+                4,
+                lambda x, y, z: ji.jigsaw_inv_pred(x, y, z, int_to_perm, 2),
+                recalculate_results=False,
+                batch_size=64)
+
         print(f"Performing nuclear norm.")
         nuclear_norm.main("cifar10", model_name, DATA_PATH_DEFAULT, RESULTS_PATH_DEFAULT,
-                          ["train_data", "val_data"])
-        print(f"Performing rotation invariance. ({model_name})")
-        ri.main(dataset, model_name, "rotation_invariance", DATA_PATH_DEFAULT, RESULTS_PATH_DEFAULT, dsets, 4,
-                ri.rotation_inv_pred)
+                          ["train_data", "val_data"],
+                          recalculate_results=False if model_name not in redo_models1 else True)
         print(f"Performing rotation prediction. ({model_name})")
         rotation.main(model_name,
                       DATA_PATH_DEFAULT,
@@ -44,8 +59,8 @@ if __name__ == "__main__":
                       EPOCHS,
                       LEARN_RATE,
                       PRINT_FREQ,
-                      False,
-                      RESULTS_PATH_DEFAULT,
+                      recalculate_results=False if model_name not in redo_models else True,
+                      results_path=RESULTS_PATH_DEFAULT,
                       weights_path=WEIGHTS_PATH_DEFAULT,
                       dataset_name=dataset)
         print(f"Performing jigsaw prediction. ({model_name})")
@@ -58,7 +73,7 @@ if __name__ == "__main__":
                     EPOCHS,
                     LEARN_RATE,
                     PRINT_FREQ,
-                    False,
+                    recalculate_results=False if model_name not in redo_models1 else True,
                     results_path=RESULTS_PATH_DEFAULT,
                     device=DEVICE,
                     weights_path=WEIGHTS_PATH_DEFAULT,
@@ -66,15 +81,5 @@ if __name__ == "__main__":
                     dataset_name=dataset,
                     grid_length=2,
                     max_perms=4)
-        print(f"Performing jigsaw invariance. ({model_name})")
-        ji.main(dataset,
-                model_name,
-                "jigsaw_invariance",
-                DATA_PATH_DEFAULT,
-                RESULTS_PATH_DEFAULT,
-                dsets,
-                4,
-                lambda x, y, z: ji.jigsaw_inv_pred(x, y, z, int_to_perm, 2),
-                recalculate_results=False,
-                batch_size=64)
+
 

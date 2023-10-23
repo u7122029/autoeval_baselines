@@ -10,6 +10,7 @@ from .repvgg import RepVGG_SS
 from .resnet import ResNet_SS
 from .shufflenet import ShuffleNet_SS
 from .vgg import VGG_SS
+from .googlenet import GoogLeNet_SS
 
 
 def get_model(name, task, num_ss_classes, device, load_best_fc=True, dataset_name="cifar10", **kwargs):
@@ -56,6 +57,8 @@ def get_model(name, task, num_ss_classes, device, load_best_fc=True, dataset_nam
         model = AlexNet_SS(**kwargs)
     elif name == "lenet5":
         model = LeNet5_SS(**kwargs)
+    elif name == "googlenet":
+        model = GoogLeNet_SS(**kwargs)
     else:
         # Absolutely impossible case since this is covered by argparse.
         # If this NameError occurs please check the choices in the arg parser.

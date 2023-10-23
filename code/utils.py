@@ -80,21 +80,22 @@ DSET_TRANSFORMS_TRAIN = {
 }
 
 VALID_MODELS = [
-    "densenet121",  # rotation, jigsaw done
-    "mobilenetv2",  # rotation, jigsaw done
-    "linear",  # rotation, jigsaw done
-    "lenet5",  # rotation, jigsaw done
-    "resnet44",  # rotation, jigsaw done
-    "resnet56",  # rotation, jigsaw done
+    "resnet20",  # rotation, jigsaw done
     "shufflenet",  # rotation, jigsaw done
     "inception_v3",  # rotation, jigsaw done
     "repvgg",  # rotation, jigsaw done
     "resnet110",  # rotation, jigsaw done
+    "googlenet", # rotation, jigsaw done.
     "densenet161",  # rotation, jigsaw done
     "densenet169",  # rotation, jigsaw done
-    "resnet20",  # rotation, jigsaw done
+    "resnet1202",  # rotation, jigsaw done
+    "mobilenetv2",  # rotation, jigsaw done
+    "densenet121",  # rotation, jigsaw done
     "resnet32",  # rotation, jigsaw done
-    "resnet1202"  # rotation, jigsaw done
+    "linear",  # rotation, jigsaw done
+    "resnet44",  # rotation, jigsaw done
+    "resnet56",  # rotation, jigsaw done
+    "lenet5"  # rotation, jigsaw done
 ]
 
 VALID_DATASETS = [

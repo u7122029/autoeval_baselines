@@ -91,10 +91,7 @@ The exterior domain contains datasets from
 - CIFAR-10.2-C - the original CIFAR-10.2 dataset but with image transformations from [(Hendrycks et. al., 2019)](https://github.com/hendrycks/robustness) applied (95 datasets)
 - CIFAR-10-F-32 - real-world images collected from [Flickr](https://www.flickr.com) compiled by [(Sun et. al., 2019)](https://github.com/sxzrt/CIFAR-10-W#cifar-10-warehouse-towards-broad-and-more-realistic-testbeds-in-model-generalization-analysis), resized to 32 by 32 images. (20 datasets)
 - CIFAR-10-F-C - uses the exact same images as CIFAR-10-F-32 but with image transformations from [(Hendrycks et al., 2019)](https://github.com/hendrycks/robustness) applied (1900 datasets)
-- CIFAR-10-W - Datasets obtained from various sources as well as through diffusion models.
-
-The CIFAR-10.1 dataset is a single dataset, while CIFAR-10.1-C and CIFAR-10-F contain 19 and 20 datasets respectively.
-Therefore, the total number of datasets in the exterior domain is 40.
+- CIFAR-10-W - Datasets obtained from various sources as well as through diffusion models [(Sun et. al., 2019)](https://github.com/sxzrt/CIFAR-10-W#cifar-10-warehouse-towards-broad-and-more-realistic-testbeds-in-model-generalization-analysis) (217 datasets).
 
 For every dataset in the exterior domain, the image file and their labels are stored as two separate `Numpy` array files
 named "data.npy" and "labels.npy". The PyTorch implementation of the Dataset class for loading the data can be found
@@ -102,11 +99,7 @@ in `utils.py`.
 
 ### Downloads
 
-Download the interior domain
-datasets: [link](https://anu365-my.sharepoint.com/:u:/g/personal/u7136359_anu_edu_au/Eb9yO_Qg41lOkoRS7P6gmqMBk5Q6A2gCV8YbRbuLpB8NwQ?e=WO3Gqi)
-
-Download the exterior domain
-datasets: [link](https://anu365-my.sharepoint.com/:u:/g/personal/u7136359_anu_edu_au/Edg83yRxM9BPonPP22suB_IBrHlKYV5bOn4VK-c5RZ8dtQ?e=kExXEm)
+Downloads are currently not available yet.
 
 ## Method
 
@@ -157,13 +150,24 @@ pip3 install -r requirements.txt
 ```
 
 To test our results on one self-supervised task, please download and unpack the datasets from the
-[downloads](#downloads) section into `code/data` and use the following.
+[downloads](#downloads) section into `code/data` and run the following lines.
 
 ```bash
 cd code
-python3 main.py
+python3 baselines/main.py
 ```
 This will run all classifiers based on the settings given in `test_config.json`.
+
+If you would like to analyse classification vs one metric only, please run the following code
+```bash
+cd code
+python3 baselines/img_classification.py --model <model> --dsets <datasets>
+python3 baselines/<metric>.py --model <model> --dsets <datasets>
+```
+Where,
+- `<model>` is the model you would like to test (see `utils.py`),
+- `<metric>` is the name of the metric you would like to test,
+- `<datasets>` are the space separated datasets you would like to record results for. We recommend using `train_data val_data`
 
 ### Self-Supervised Task Metrics
 
@@ -198,11 +202,36 @@ where
 - $y_r$ is the label for $r \in [1,g!] \cap \mathbb{N}$,
 - $C^p(\tilde{x}_j; \hat{\theta})$ predicts the permutation index of a jigsaw image $\tilde{x}_j$.
 
+#### Rotation and Jigsaw Invariance
+Both rotation and jigsaw invariance derive from a base metric called Effective Invariance (EI).
+```math
+\text{EI} = \mathbf{1}_{\hat{y}}(\hat{y}_t) \cdot \sqrt{\hat{p}\cdot \hat{p}_t}
+```
+Where
+- $\hat{y}$ is the prediction of the original image,
+- $\hat{y}_t$ is the prediction of the transformed image,
+- $\hat{p}$ is the confidence of the prediction on the original image,
+- $\hat{p}_t$ is the confidence of the prediction on the transformed image.
+
+We can then define rotation invariance (RI) as the average EI of all predictions and confidence probabilities in a dataset.
+```math
+\text{RI} = \frac{1}{N}\sum_{i = 1}^N\text{EI}(\hat{y},\hat{y}_r,\hat{p},\hat{p}_r)
+```
+Where 
+- $\hat{y}_r$ is the prediction of a rotated image,
+- $\hat{p}_r$ is the confidence of the same rotated image.
+
+For jigsaw invariance (JI) we use the same formula but with jigsawed images instead of rotated images.
+
+We should also emphasise that the identity rotation and jigsaw permutation are never considered when calculating RI
+and JI respectively.
+#### Nuclear Norm
+Let $\hat{Y} \in {N \times k}$ be the stacked softmax probability vectors outputted when inputting the corresponding
+images into the model, and let \(S\) be the set of singular values of \(\hat{Y}\). Then the nuclear norm is defined as
+```math
+\widehat{\|\hat{Y}\|} = \frac{\sum_{s \in S}s}{N \cdot\sqrt{\min(N,k)}}
+```
+
 ## Results
-
-The tables in each section below show the results of the linear models fitting to their corresponding domains using the
-[Root-Mean-Square Error](https://en.wikipedia.org/wiki/Root-mean-square_deviation) (RMSE), and the
-[Coefficient of Determination](https://en.wikipedia.org/wiki/Coefficient_of_determination) ($R^2$ Coefficient).
-
-All tables are sorted in descending order by $R^2$ coefficient.
+TODO
 
