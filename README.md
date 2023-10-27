@@ -20,15 +20,11 @@ This is a fork of [the 1st DataCV Challenge](https://sites.google.com/view/vdu-c
     - [Interior Domain](#interior-domain-1)
     - [Exterior Domain](#exterior-domain-1)
     - [Exterior Domain With Interior Domain Fit](#exterior-domain-with-interior-domain-fit)
+- [Issues](#issues)
 
 ## Abstract
 
-We investigate the relationship between image classification accuracy (classification) and jigsaw invariance (JI) over the 
-CIFAR-10 dataset and its variants. This provides extra insight into using metrics derived from Effective Invariance (EI) to predict classification accuracy
-where labels for a given dataset are not provided to help determine a classifier's performance over it. We also compare the strength of the correlation between classification and JI with other metrics such as rotation invariance (RI), rotation prediction (rotation), jigsaw prediction (jigsaw) and the nuclear norm. We find that there is no clear
-correlation between classification and JI, which is consistent with classification vs. RI. Most models showed inconsistent results over both metrics, while the correlation was more consistent but moderately strong with rotation and jigsaw as the independent variables. Meanwhile the correlation was strongest with the nuclear norm as the independent variable, which could be made stronger with the natural logarithm taken on classification. This overall shows that a model's classification accuracy cannot be reliably predicted using JI or RI, but rather with the nuclear norm.
-
-
+We investigate the effectiveness of the Jigsaw Invariance (JI) metric at predicting Image Classification Accuracy (ICA) on the CIFAR-10 dataset distributions over various classifiers, and compare the strength of the correlation with other metrics when used to compute ICA. Doing so helps better understand the different methods to estimate ICA where class labels are not given - occurring when one would like to test a trained model on new data outside the training distribution. We find that JI exhibits a varied linear correlation ($R^2 \in [0.17,0.74]$), and a varied positive monoticity ($\rho \in [0.38,0.86]$) over the CIFAR-10 test set and its copies through image transformations. These correlations do not always generalise well on datasets outside the CIFAR-10 distribution ($R^2 \in [-0.63, 0.58]$, $\rho \in [-0.17,0.82]$). This means that a higher JI implies a higher ICA, but the relationship is not always linear, and may not always hold in general. Furthermore, the metric's effectiveness at estimating ICA does not compare to the Nuclear Norm (NN) metric, but it is an improvement to the Rotation Invariance (RI) metric, which showed no consistent correlation with ICA. Our findings with RI disagree with other work that performs similar procedures but over a dataset which uses larger images, suggesting that image size plays a part in the difference.
 <!--We also verify the same correlation with 
 jigsaw solving accuracy (jigsaw) in place of rotation. For both comparisons, all models (except one) showed a strong 
 correlation over datasets constructed by directly using image transformations ($R^2 > 0.71$ for classification vs. 
@@ -87,7 +83,7 @@ The exterior domain contains datasets from
 
 - [CIFAR-10.1](https://github.com/modestyachts/CIFAR-10.1) (1 dataset),
 - CIFAR-10.1-C - the original CIFAR-10.1 dataset but with image transformations from [(Hendrycks et. al., 2019)](https://github.com/hendrycks/robustness) applied (95 datasets)
-- [CIFAR-10.2](https://github.com/modestyachts/CIFAR-10.2)
+- [CIFAR-10.2](https://github.com/modestyachts/CIFAR-10.2) (1 dataset)
 - CIFAR-10.2-C - the original CIFAR-10.2 dataset but with image transformations from [(Hendrycks et. al., 2019)](https://github.com/hendrycks/robustness) applied (95 datasets)
 - CIFAR-10-F-32 - real-world images collected from [Flickr](https://www.flickr.com) compiled by [(Sun et. al., 2019)](https://github.com/sxzrt/CIFAR-10-W#cifar-10-warehouse-towards-broad-and-more-realistic-testbeds-in-model-generalization-analysis), resized to 32 by 32 images. (20 datasets)
 - CIFAR-10-F-C - uses the exact same images as CIFAR-10-F-32 but with image transformations from [(Hendrycks et al., 2019)](https://github.com/hendrycks/robustness) applied (1900 datasets)
@@ -99,7 +95,7 @@ in `utils.py`.
 
 ### Downloads
 
-Downloads are currently not available yet.
+Downloads for the datasets used are currently not available yet, since they are mostly of other researchers' work and a platform to host all the datasets (100GB+ in size) is yet to be found.
 
 ## Method
 
@@ -169,6 +165,7 @@ Where,
 - `<metric>` is the name of the metric you would like to test,
 - `<datasets>` are the space separated datasets you would like to record results for. We recommend using `train_data val_data`
 
+If you would like to recalculate the results for any of the metrics (including image classification), simply add the `--recalculate-results` flag.
 ### Self-Supervised Task Metrics
 
 We present the metrics for each self-supervised task used in this repository below.
@@ -227,11 +224,10 @@ We should also emphasise that the identity rotation and jigsaw permutation are n
 and JI respectively.
 #### Nuclear Norm
 Let $\hat{Y} \in {N \times k}$ be the stacked softmax probability vectors outputted when inputting the corresponding
-images into the model, and let \(S\) be the set of singular values of \(\hat{Y}\). Then the nuclear norm is defined as
+images into the model, and let $S$ be the set of singular values of $\hat{Y}$. Then the nuclear norm is defined as
 ```math
 \widehat{\|\hat{Y}\|} = \frac{\sum_{s \in S}s}{N \cdot\sqrt{\min(N,k)}}
 ```
 
-## Results
-TODO
-
+## Issues
+Having problems with the code? Feel free to open an issue!

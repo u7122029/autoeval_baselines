@@ -25,10 +25,17 @@ class Model(ABC, nn.Module):
         self.model = torch.hub.load(repo, weights_name, **kwargs)
 
         # Freeze backbone and classification layer
+        self.freeze_backbone()
+
+        self.fc_ss = None  # Every model needs this self-supervised layer, unless it is only being used for class classification.
+
+    def freeze_backbone(self):
         for param in self.model.parameters():
             param.requires_grad = False
 
-        self.fc_ss = None  # Every model needs this self-supervised layer, unless it is only being used for class classification.
+    def unfreeze_backbone(self):
+        for param in self.model.parameters():
+            param.requires_grad = True
 
     def load_ss_fc(self, link, is_local=False):
         # Load the weights of the self-supervised fc layer.

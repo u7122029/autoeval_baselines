@@ -108,6 +108,7 @@ def fit_lr(train_x,
            output: Path = None,
            dataset_name="cifar10",
            y_transform: int = None):
+    print(len(train_x), len(val_x))
     print(len(train_y), len(val_y))
     if y_transform == LOGARITHMIC:
         train_y = np.log(train_y)
@@ -169,9 +170,10 @@ def fit_lr(train_x,
 
     plt.legend(loc="best")
     if output:
-        p = results_root / "figures" / f"{model_name}_{x_task}.svg"
+        str_transform = y_transform if y_transform is not None else ""
+        p = results_root / "figures" / f"{model_name}_{x_task}{str_transform}.png"
         p.parents[0].mkdir(parents=True, exist_ok=True)
-        plt.savefig(str(p), format="svg")
+        plt.savefig(str(p), format="png")
 
     if show_graphs:
         plt.show()
